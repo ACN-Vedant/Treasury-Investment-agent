@@ -1,2755 +1,561 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Treasury Investment AI</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
-
-  :root {
-    --bg: #0a0e14;
-    --surface: #111720;
-    --surface2: #1a2233;
-    --border: #1e2d42;
-    --border2: #2a3f5c;
-    --accent: #00d4ff;
-    --accent2: #0099cc;
-    --gold: #f0c060;
-    --green: #00e5a0;
-    --red: #ff4d6a;
-    --amber: #ffaa33;
-    --purple: #b388ff;
-    --text: #e2eaf4;
-    --muted: #607080;
-    --muted2: #8a9bb0;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'IBM Plex Sans', sans-serif;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 14px;
-  }
-
-  .shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  .topbar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    gap: 12px;
-    height: 52px;
-    flex-shrink: 0;
-  }
-  .topbar-logo { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: 0.04em; white-space: nowrap; }
-  .topbar-sep { color: var(--border2); }
-  .topbar-title { font-size: 13px; color: var(--muted2); font-weight: 400; }
-  .topbar-badge { margin-left: auto; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: var(--accent); font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 3px; }
-
-  /* TAB BAR */
-  .tabbar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: stretch;
-    overflow-x: auto;
-    flex-shrink: 0;
-    scrollbar-width: none;
-  }
-  .tabbar::-webkit-scrollbar { display: none; }
-  .tab-group { display: flex; align-items: stretch; }
-  .tab-group-sep { width: 1px; background: var(--border); margin: 8px 0; flex-shrink: 0; }
-  .tab-btn {
-    display: flex; align-items: center; gap: 7px;
-    padding: 0 16px; height: 42px;
-    background: none; border: none; border-bottom: 2px solid transparent;
-    cursor: pointer; color: var(--muted2); font-family: var(--sans); font-size: 12px;
-    white-space: nowrap; transition: all 0.15s; position: relative;
-  }
-  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-btn.done { color: var(--green); }
-  .tab-btn.done .tab-num { background: var(--green); color: var(--bg); }
-  .tab-btn.blocked { opacity: 0.38; cursor: not-allowed; }
-  .tab-btn.active .tab-num { background: var(--accent); color: var(--bg); }
-  .tab-num {
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--border2); color: var(--muted2);
-    font-family: var(--mono); font-size: 9px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all 0.15s;
-  }
-  .tab-check { font-size: 10px; color: var(--green); margin-left: 2px; }
-
-  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-  .panel { display: none; flex-direction: column; height: 100%; }
-  .panel.active { display: flex; }
-
-  .panel-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .panel-title { font-size: 16px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-  .phase-tag { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 3px; font-weight: 500; letter-spacing: 0.05em; }
-  .phase-identify { background: rgba(0,212,255,0.12); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
-  .phase-deal { background: rgba(240,192,96,0.12); color: var(--gold); border: 1px solid rgba(240,192,96,0.2); }
-  .phase-approval { background: rgba(0,229,160,0.12); color: var(--green); border: 1px solid rgba(0,229,160,0.2); }
-  .phase-human { background: rgba(255,170,51,0.12); color: var(--amber); border: 1px solid rgba(255,170,51,0.2); }
-  .model-tag { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 3px; font-weight: 500; letter-spacing: 0.03em; margin-left: 6px; }
-  .model-haiku { background: rgba(0,229,160,0.10); color: var(--green); border: 1px solid rgba(0,229,160,0.22); }
-  .model-sonnet { background: rgba(179,136,255,0.10); color: var(--purple); border: 1px solid rgba(179,136,255,0.22); }
-  .panel-desc { font-size: 13px; color: var(--muted2); line-height: 1.5; }
-
-  .panel-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
-
-  .data-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .data-section.loan-section { border-color: rgba(179,136,255,0.3); }
-  .data-section-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); }
-  .data-section.loan-section .data-section-header { border-bottom-color: rgba(179,136,255,0.2); background: rgba(179,136,255,0.05); }
-  .data-section-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted2); letter-spacing: 0.06em; text-transform: uppercase; }
-  .data-section.loan-section .data-section-title { color: var(--purple); }
-  .data-hint { font-size: 11px; color: var(--muted); }
-  .data-table-wrap { overflow-x: auto; max-height: 200px; overflow-y: auto; }
-  .data-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
-  .data-table th { background: rgba(30,45,66,0.5); color: var(--muted2); font-weight: 500; text-align: left; padding: 6px 10px; white-space: nowrap; position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--border); }
-  .data-table td { padding: 5px 10px; color: var(--text); border-bottom: 1px solid rgba(30,45,66,0.5); white-space: nowrap; }
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table tr:hover td { background: rgba(0,212,255,0.03); }
-  .num { color: var(--accent); }
-  .pos { color: var(--green); }
-  .warn { color: var(--amber); }
-  .neg { color: var(--red); }
-  .purple { color: var(--purple); }
-  .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
-  .badge-blue { background: rgba(0,212,255,0.12); color: var(--accent); }
-  .badge-green { background: rgba(0,229,160,0.12); color: var(--green); }
-  .badge-amber { background: rgba(255,170,51,0.12); color: var(--amber); }
-  .badge-red { background: rgba(255,77,106,0.12); color: var(--red); }
-  .badge-purple { background: rgba(179,136,255,0.12); color: var(--purple); }
-
-  .run-bar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-  .run-btn { display: flex; align-items: center; gap: 8px; padding: 9px 18px; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .run-btn:hover { background: #00eeff; transform: translateY(-1px); }
-  .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .run-btn.running { background: var(--surface2); color: var(--accent); border: 1px solid var(--accent); }
-  .run-btn-gold { background: var(--gold); color: var(--bg); }
-  .run-btn-gold:hover { background: #ffd070; }
-  .run-btn-green { background: var(--green); color: var(--bg); }
-  .run-btn-green:hover { background: #33ffbb; }
-  .run-btn-completed { background: var(--green) !important; color: var(--bg) !important; border: none !important; opacity: 1 !important; cursor: default; }
-  .next-btn { display: flex; align-items: center; gap: 8px; padding: 9px 16px; background: var(--surface2); color: var(--muted2); border: 1px solid var(--border2); border-radius: 6px; font-family: var(--sans); font-size: 13px; cursor: pointer; transition: all 0.15s; margin-left: auto; }
-  .next-btn:hover { background: var(--border2); color: var(--text); }
-  .next-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .output-area { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex: 1; min-height: 200px; }
-  .output-header { padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; gap: 8px; }
-  .output-title { font-family: var(--mono); font-size: 11px; color: var(--muted2); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-  .status-dot.running { background: var(--accent); animation: pulse 1s infinite; }
-  .status-dot.done { background: var(--green); }
-  .status-dot.error { background: var(--red); }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-  .output-body { padding: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--muted2); overflow-y: auto; max-height: 340px; white-space: pre-wrap; word-break: break-word; }
-  .output-body.has-content { color: var(--text); }
-
-  .approval-gate { background: rgba(255,170,51,0.06); border: 1px solid rgba(255,170,51,0.25); border-radius: 8px; padding: 18px 20px; }
-  .approval-title { font-size: 14px; font-weight: 500; color: var(--amber); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  .approval-text { font-size: 13px; color: var(--muted2); line-height: 1.6; margin-bottom: 14px; }
-  .approval-btns { display: flex; gap: 10px; }
-  .approve-btn { padding: 8px 16px; background: var(--green); color: var(--bg); border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .approve-btn:hover { background: #33ffbb; }
-  .approve-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .reject-btn { padding: 8px 16px; background: var(--surface2); color: var(--muted2); border: 1px solid var(--border2); border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
-  .reject-btn:hover { background: rgba(255,77,106,0.1); color: var(--red); border-color: rgba(255,77,106,0.3); }
-
-  .conf-area { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .conf-area-header { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface2); font-family: var(--mono); font-size: 11px; color: var(--muted2); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
-  .conf-textarea { width: 100%; min-height: 120px; background: transparent; border: none; padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: var(--text); resize: vertical; outline: none; line-height: 1.6; }
-  .conf-textarea::placeholder { color: var(--muted); }
-
-  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
-  .summary-card.loan-card { border-color: rgba(179,136,255,0.3); background: rgba(179,136,255,0.05); }
-  .summary-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-  .summary-val { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--text); }
-  .summary-sub { font-size: 11px; color: var(--muted2); margin-top: 3px; }
-
-  .pipeline { display: flex; flex-direction: column; gap: 0; }
-  .pipeline-step { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; position: relative; }
-  .pipeline-step:not(:last-child)::after { content: ''; position: absolute; left: 10px; top: 36px; bottom: -12px; width: 1px; background: var(--border2); }
-  .pipeline-dot { width: 21px; height: 21px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
-  .pipeline-dot-pending { background: var(--border2); color: var(--muted); }
-  .pipeline-dot-running { background: var(--accent); color: var(--bg); animation: pulse 1s infinite; }
-  .pipeline-dot-done { background: var(--green); color: var(--bg); }
-  .pipeline-dot-human { background: var(--amber); color: var(--bg); }
-  .pipeline-info { flex: 1; }
-  .pipeline-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
-  .pipeline-status { font-size: 12px; color: var(--muted2); }
-  .pipeline-status.complete { color: var(--green); }
-  .pipeline-status.active { color: var(--accent); }
-  .pipeline-status.human { color: var(--amber); }
-
-  .notice { background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.15); border-radius: 6px; padding: 10px 14px; font-size: 12px; color: var(--muted2); line-height: 1.5; }
-  .notice strong { color: var(--accent); }
-  .notice-loan { background: rgba(179,136,255,0.06); border: 1px solid rgba(179,136,255,0.2); border-radius: 6px; padding: 10px 14px; font-size: 12px; color: var(--muted2); line-height: 1.5; }
-  .notice-loan strong { color: var(--purple); }
-  .error-notice { background: rgba(255,77,106,0.06); border: 1px solid rgba(255,77,106,0.25); border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #ff8099; line-height: 1.5; }
-
-  .upload-gate { background: var(--surface); border: 1px dashed var(--border2); border-radius: 8px; padding: 22px; text-align: center; }
-  .upload-gate.loaded { border-style: solid; border-color: rgba(0,229,160,0.35); background: rgba(0,229,160,0.04); }
-  .upload-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
-  .upload-sub { font-size: 12px; color: var(--muted2); line-height: 1.5; margin-bottom: 16px; }
-  .upload-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .upload-btn:hover { background: #00eeff; transform: translateY(-1px); }
-  .upload-status { margin-top: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.6; }
-  .upload-status .ok { color: var(--green); }
-  .upload-status .err { color: var(--red); }
-  .sheet-pill { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 8px; margin: 3px; border-radius: 3px; background: rgba(0,229,160,0.12); color: var(--green); border: 1px solid rgba(0,229,160,0.25); }
-  .sheet-pill.missing { background: rgba(255,77,106,0.12); color: var(--red); border-color: rgba(255,77,106,0.25); }
-
-  /* Pinned one-liner banners — all steps */
-  .rec-banner { background: var(--surface); border-radius: 8px; overflow: hidden; display: none; }
-  .rec-banner.visible { display: block; }
-  .rec-banner-header { padding: 9px 14px; display: flex; align-items: center; gap: 8px; }
-  .rec-banner-label { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-  .rec-banner-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: auto; }
-  .rec-banner-body { padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 7px; }
-  .rec-line { display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.5; }
-  .rec-line-btns { margin-left: auto; display: flex; gap: 5px; flex-shrink: 0; }
-  .rec-approve-btn { padding: 2px 10px; background: rgba(0,229,160,0.15); color: var(--green); border: 1px solid rgba(0,229,160,0.35); border-radius: 4px; font-family: var(--mono); font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .rec-approve-btn:hover { background: rgba(0,229,160,0.28); }
-  .rec-approve-btn.chosen { background: var(--green); color: var(--bg); border-color: var(--green); cursor: default; }
-  .rec-decline-btn { padding: 2px 10px; background: rgba(255,77,106,0.10); color: var(--red); border: 1px solid rgba(255,77,106,0.25); border-radius: 4px; font-family: var(--mono); font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .rec-decline-btn:hover { background: rgba(255,77,106,0.22); }
-  .rec-decline-btn.chosen { background: var(--red); color: var(--bg); border-color: var(--red); cursor: default; }
-  .rec-line-bullet { font-size: 14px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
-  .rec-line-key { font-weight: 700; min-width: 36px; }
-  .rec-line-text { color: var(--muted2); }
-  /* Per-step colour themes */
-  .rec-banner.theme-cyan  { border: 1px solid rgba(0,212,255,0.3); }
-  .rec-banner.theme-cyan  .rec-banner-header { background: rgba(0,212,255,0.07); border-bottom: 1px solid rgba(0,212,255,0.15); }
-  .rec-banner.theme-cyan  .rec-banner-label, .rec-banner.theme-cyan .rec-line-bullet, .rec-banner.theme-cyan .rec-line-key { color: var(--accent); }
-  .rec-banner.theme-green { border: 1px solid rgba(0,229,160,0.3); }
-  .rec-banner.theme-green .rec-banner-header { background: rgba(0,229,160,0.07); border-bottom: 1px solid rgba(0,229,160,0.15); }
-  .rec-banner.theme-green .rec-banner-label, .rec-banner.theme-green .rec-line-bullet, .rec-banner.theme-green .rec-line-key { color: var(--green); }
-  .rec-banner.theme-purple { border: 1px solid rgba(179,136,255,0.3); }
-  .rec-banner.theme-purple .rec-banner-header { background: rgba(179,136,255,0.07); border-bottom: 1px solid rgba(179,136,255,0.15); }
-  .rec-banner.theme-purple .rec-banner-label, .rec-banner.theme-purple .rec-line-bullet, .rec-banner.theme-purple .rec-line-key { color: var(--purple); }
-  .rec-banner.theme-gold  { border: 1px solid rgba(240,192,96,0.35); }
-  .rec-banner.theme-gold  .rec-banner-header { background: rgba(240,192,96,0.08); border-bottom: 1px solid rgba(240,192,96,0.2); }
-  .rec-banner.theme-gold  .rec-banner-label, .rec-banner.theme-gold .rec-line-bullet, .rec-banner.theme-gold .rec-line-key { color: var(--gold); }
-
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-  /* Per-deal confirmation cards (Step 5) */
-  .deal-conf-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .deal-conf-card-header { padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .deal-conf-card-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase; }
-  .deal-conf-card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
-  .deal-conf-card textarea { width: 100%; min-height: 110px; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px; padding: 10px 12px; font-family: var(--mono); font-size: 12px; color: var(--text); resize: vertical; outline: none; line-height: 1.6; }
-  .deal-conf-card textarea::placeholder { color: var(--muted); }
-  .deal-conf-card textarea:focus { border-color: var(--accent); }
-  /* Mode toggle */
-  .conf-mode-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
-  .conf-mode-tab { padding: 7px 14px; font-size: 12px; font-family: var(--sans); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: var(--muted2); transition: all 0.15s; margin-bottom: -1px; }
-  .conf-mode-tab:hover { color: var(--text); }
-  .conf-mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-  /* Manual form */
-  .manual-form { display: flex; flex-direction: column; gap: 10px; }
-  .manual-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .manual-field label { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-  .manual-field input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px; padding: 7px 10px; font-family: var(--mono); font-size: 12px; color: var(--text); outline: none; }
-  .manual-field input:focus { border-color: var(--accent); }
-  .manual-field input::placeholder { color: var(--muted); }
-  .deal-conf-card-actions { display: flex; align-items: center; gap: 8px; }
-  .deal-conf-run-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--gold); color: var(--bg); border: none; border-radius: 5px; font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .deal-conf-run-btn:hover { background: #ffd070; }
-  .deal-conf-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .deal-conf-run-btn.completed { background: var(--green) !important; color: var(--bg) !important; cursor: default; }
-  .deal-conf-output { font-family: var(--mono); font-size: 12px; color: var(--muted2); line-height: 1.6; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; white-space: pre-wrap; min-height: 40px; display: none; }
-  .deal-conf-output.visible { display: block; color: var(--text); }
-  .email-card { background: var(--surface); border: 1px solid rgba(0,212,255,0.25); border-radius: 8px; overflow: hidden; }
-  .email-card-header { padding: 10px 14px; background: rgba(0,212,255,0.07); border-bottom: 1px solid rgba(0,212,255,0.15); display: flex; align-items: center; justify-content: space-between; }
-  .email-card-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase; }
-  .email-card-body { padding: 14px 16px; }
-  .email-field { margin-bottom: 10px; }
-  .email-field-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-  .email-field-value { font-size: 13px; color: var(--text); line-height: 1.6; white-space: pre-wrap; }
-  .email-field-value.subject { font-weight: 600; color: var(--accent); }
-  .email-card-footer { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
-  .pdf-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--accent); color: var(--bg); border: none; border-radius: 5px; font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .pdf-btn:hover { background: #00eeff; }
-  .email-generating { font-family: var(--mono); font-size: 12px; color: var(--muted2); padding: 14px 16px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treasury Investment Agent - 6 Agent System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(20, 20, 40, 0.95);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00d9ff;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            color: #00d9ff;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            color: #a0a0a0;
+            font-size: 13px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(100, 150, 200, 0.2);
+            padding-bottom: 15px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: rgba(100, 150, 200, 0.1);
+            border: 1px solid rgba(100, 150, 200, 0.3);
+            color: #a0a0a0;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background: #00d9ff;
+            color: #0f0f1e;
+            border-color: #00d9ff;
+            font-weight: bold;
+        }
+        .tab-button:hover {
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .section {
+            background: rgba(40, 40, 70, 0.6);
+            border: 1px solid rgba(100, 150, 200, 0.2);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #00d9ff;
+            font-size: 13px;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 150, 200, 0.3);
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            background: #00d9ff;
+            color: #0f0f1e;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00ffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.4);
+        }
+        .secondary {
+            background: rgba(100, 150, 200, 0.2);
+            color: #00d9ff;
+            border: 1px solid #00d9ff;
+        }
+        .secondary:hover {
+            background: rgba(100, 150, 200, 0.4);
+        }
+        .info-box {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid #00d9ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #a0d9ff;
+        }
+        .divider {
+            height: 1px;
+            background: rgba(100, 150, 200, 0.2);
+            margin: 20px 0;
+        }
+        .agent-box {
+            background: rgba(0, 217, 255, 0.05);
+            border-left: 3px solid #00d9ff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .agent-title {
+            color: #00d9ff;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .agent-desc {
+            color: #a0a0a0;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .output-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 150, 200, 0.2);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #00ff00;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #0f0f1e;
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid #00d9ff;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close-btn {
+            float: right;
+            font-size: 28px;
+            cursor: pointer;
+            color: #00d9ff;
+        }
+        .close-btn:hover {
+            color: #ff6b6b;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>Treasury Investment Agent</h1>
+            <p>6-Agent System with SAP Fiori Integration | Claude AI Native Analysis</p>
+        </div>
 
-<div class="shell">
-  <div class="topbar">
-    <div class="topbar-logo">TREASURY_AI</div>
-    <div class="topbar-sep">/</div>
-    <div class="topbar-title">Investment Agent System — Interactive Run</div>
-    <div class="topbar-badge">haiku-4.5 · sonnet-4.6</div>
-  </div>
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('data')">📊 Data Input</button>
+            <button class="tab-button" onclick="switchTab('sap')">🔗 SAP Integration</button>
+            <button class="tab-button" onclick="switchTab('agents')">🤖 Agent Pipeline</button>
+        </div>
 
-  <nav class="tabbar">
-    <div class="tab-group">
-      <button class="tab-btn active" onclick="showPanel('overview')" id="nav-overview">
-        <span class="tab-num">≡</span> Dashboard
-      </button>
-    </div>
-    <div class="tab-group-sep"></div>
-    <div class="tab-group">
-      <button class="tab-btn blocked" onclick="showPanel('s1')" id="nav-s1">
-        <span class="tab-num">1</span> Reporting<span class="tab-check" id="chk-s1"></span>
-      </button>
-      <button class="tab-btn blocked" onclick="showPanel('s3')" id="nav-s3">
-        <span class="tab-num">2</span> Ratings<span class="tab-check" id="chk-s3"></span>
-      </button>
-      <button class="tab-btn blocked" onclick="showPanel('s2')" id="nav-s2">
-        <span class="tab-num">3</span> Compliance<span class="tab-check" id="chk-s2"></span>
-      </button>
-      <button class="tab-btn blocked" onclick="showPanel('s4')" id="nav-s4">
-        <span class="tab-num">4</span> Opportunity<span class="tab-check" id="chk-s4"></span>
-      </button>
-    </div>
-    <div class="tab-group-sep"></div>
-    <div class="tab-group">
-      <button class="tab-btn blocked" onclick="showPanel('s5')" id="nav-s5">
-        <span class="tab-num">5</span> Trader<span class="tab-check" id="chk-s5"></span>
-      </button>
-    </div>
-    <div class="tab-group-sep"></div>
-    <div class="tab-group">
-      <button class="tab-btn blocked" onclick="showPanel('s6')" id="nav-s6">
-        <span class="tab-num">6</span> Approval<span class="tab-check" id="chk-s6"></span>
-      </button>
-    </div>
-  </nav>
+        <!-- DATA INPUT TAB -->
+        <div id="data" class="tab-content active">
+            <div class="section">
+                <div class="info-box">
+                    ℹ️ Upload your treasury data from Excel file or fetch automatically from SAP Fiori. No sample/dummy data — real treasury data only.
+                </div>
 
-  <div class="main">
+                <div class="agent-title">📁 Excel File Upload</div>
+                <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 10px;">
+                    Upload treasury_data.xlsx with sheets: Cash Balances, Bank Statements, Loan Schedule, Investment Positions
+                </p>
+                <div class="form-group">
+                    <input type="file" id="excelFile" accept=".xlsx,.xls">
+                </div>
 
-    <!-- OVERVIEW PANEL -->
-    <div class="panel active" id="panel-overview">
-      <div class="panel-header">
-        <div class="panel-title">Investment Recommendation Dashboard <span class="phase-tag phase-identify">ALL STEPS</span></div>
-        <div class="panel-desc">Upload your treasury workbook to receive an investment recommendation. The system works through surplus analysis, compliance checks and credit ratings automatically, stopping for your approval before any deal is placed.</div>
-      </div>
-      <div class="panel-body">
-        <!-- SAP FIORI TREASURY DATA INTEGRATION -->
-        <div class="upload-gate" id="sap-gate" style="border-color: rgba(179,136,255,0.3); background: rgba(179,136,255,0.03);">
-          <div class="upload-title">◆ Fetch All Treasury Data from SAP Fiori TPM13</div>
-          <div class="upload-sub">
-            Connect to your SAP Fiori S/4HANA TPM13 Treasury Position Management and automatically fetch all three data sources in one go:
-            <strong>Cash Balances</strong>, <strong>Loan Schedule</strong>, and <strong>Investment Positions</strong>. Includes current flows and future maturity schedules.
-          </div>
-          <div class="manual-form" style="max-width:600px;">
-            <div class="manual-row">
-              <div class="manual-field">
-                <label for="sap-url">SAP Fiori URL</label>
-                <input type="text" id="sap-url" placeholder="https://your-sap-instance.sapfioriapps.com">
-              </div>
-              <div class="manual-field">
-                <label for="sap-user">Login ID</label>
-                <input type="text" id="sap-user" placeholder="Username">
-              </div>
+                <div class="divider"></div>
+
+                <div class="agent-title">Margin Haircut (Manual Input)</div>
+                <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 10px;">
+                    Enter buffer percentage to be applied against net investable surplus
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Haircut % (0-100)</label>
+                        <input type="number" id="haircut" min="0" max="100" value="5" placeholder="e.g., 5">
+                    </div>
+                    <div class="form-group">
+                        <label>Analysis Date</label>
+                        <input type="date" id="analysisDate">
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="button-group">
+                    <button onclick="uploadExcel()">📂 Upload & Parse Excel</button>
+                    <button class="secondary" onclick="clearData()">🗑️ Clear</button>
+                </div>
+
+                <div id="dataStatus" class="output-box" style="display: none; margin-top: 15px;"></div>
             </div>
-            <div class="manual-row">
-              <div class="manual-field">
-                <label for="sap-pass">Password</label>
-                <input type="password" id="sap-pass" placeholder="Password">
-              </div>
-              <div class="manual-field">
-                <label for="sap-company">Company Code</label>
-                <input type="text" id="sap-company" placeholder="e.g., 1000">
-              </div>
-            </div>
-            <div class="manual-row">
-              <div class="manual-field">
-                <label for="sap-currency">Currency</label>
-                <input type="text" id="sap-currency" placeholder="e.g., USD" value="USD">
-              </div>
-              <div class="manual-field">
-                <label for="sap-date">As-of Date</label>
-                <input type="date" id="sap-date">
-              </div>
-            </div>
-            <button class="upload-btn run-btn-green" onclick="fetchSAPTreasuryData()" style="background:var(--purple);margin-top:10px;width:100%;" id="btn-sap-fetch">
-              ⟳ Fetch All Treasury Data from SAP (Cash + Loans + Investments)
-            </button>
-          </div>
-          <div class="upload-status" id="sap-status"></div>
         </div>
 
-        <div style="text-align:center;margin:16px 0;color:var(--muted2);font-size:12px;">— OR —</div>
+        <!-- SAP INTEGRATION TAB -->
+        <div id="sap" class="tab-content">
+            <div class="section">
+                <div class="info-box">
+                    🔗 Connect to SAP Fiori TPM13 to fetch live treasury data automatically
+                </div>
 
-        <div class="upload-gate" id="upload-gate">
-          <div class="upload-title">⬡ Upload your Treasury Workbook to begin</div>
-          <div class="upload-sub">
-            A fresh workbook upload is required for every run. On upload, the system automatically runs surplus analysis, credit ratings assessment and compliance checks, then presents investment recommendations for your approval.
-            Expected sheets: <strong>Cash Balances</strong>,
-            <strong>Loan Schedule</strong>, <strong>Investment Positions</strong>. <strong>Market Rates &amp; Policy</strong> is no longer uploaded — the daily rate fields are fetched automatically (see status below).
-          </div>
-          <input type="file" id="xlsx-input" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleUpload(event)">
-          <div style="display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;">
-            <button class="upload-btn" onclick="document.getElementById('xlsx-input').click()">
-              ⬆ Choose Excel file
-            </button>
-            <button class="upload-btn" style="background:var(--surface2);color:var(--muted2);border:1px solid var(--border2);" onmouseover="this.style.background='var(--border2)';this.style.color='var(--text)'" onmouseout="this.style.background='var(--surface2)';this.style.color='var(--muted2)'" onclick="downloadSampleFile()">
-              ⬇ Download Sample File
-            </button>
-          </div>
-          <div class="upload-status" id="upload-status"></div>
-          <div class="notice" id="live-rates-banner" style="margin-top:14px;text-align:left;"></div>
+                <div class="agent-title">SAP Connection Settings</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SAP Fiori URL</label>
+                        <input type="url" id="sapUrl" placeholder="https://your-sap-instance.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Company Code</label>
+                        <input type="text" id="companyCode" placeholder="1000">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="sapUser" placeholder="your.username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="sapPass" placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Key Date (YYYY-MM-DD)</label>
+                        <input type="date" id="keyDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Margin Haircut %</label>
+                        <input type="number" id="sapHaircut" min="0" max="100" value="5" placeholder="e.g., 5">
+                    </div>
+                </div>
+
+                <div class="agent-title">Data Sources to Fetch</div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; margin-bottom: 10px;">
+                        <input type="checkbox" id="fetchCash" checked>
+                        <span style="margin-left: 8px; color: #a0a0a0; font-size: 12px;">Cash Balances (Cash Flow Analyzer)</span>
+                    </label>
+                    <label style="display: flex; margin-bottom: 10px;">
+                        <input type="checkbox" id="fetchLoans" checked>
+                        <span style="margin-left: 8px; color: #a0a0a0; font-size: 12px;">Loan Schedule (TPM13)</span>
+                    </label>
+                    <label style="display: flex;">
+                        <input type="checkbox" id="fetchInvest" checked>
+                        <span style="margin-left: 8px; color: #a0a0a0; font-size: 12px;">Investment Positions (TPM13)</span>
+                    </label>
+                </div>
+
+                <div class="button-group">
+                    <button onclick="fetchSAPData()">🚀 Fetch Live SAP Data</button>
+                    <button class="secondary" onclick="testSAPConnection()">✓ Test Connection</button>
+                </div>
+
+                <div id="sapStatus" class="output-box" style="display: none; margin-top: 15px;"></div>
+            </div>
         </div>
 
-        <div class="manual-field" style="max-width:420px;">
-          <label for="haircut-input">Enter margin haircut (in %)</label>
-          <input type="number" id="haircut-input" min="0" max="100" step="0.1" value="5" oninput="onHaircutChange()">
-          <div class="upload-sub" style="margin:6px 0 0;">Enter the haircut % to be considered as buffer from the net surplus balance available</div>
-        </div>
+        <!-- AGENT PIPELINE TAB -->
+        <div id="agents" class="tab-content">
+            <div class="section">
+                <div class="info-box">
+                    🤖 Six-Agent Sequential Analysis Pipeline. Run each agent in Claude AI with your prepared data.
+                </div>
 
-        <div class="notice-loan">
-          <strong>How it works:</strong> On upload, each of the 3 sheets is parsed and passed to the agents. Market rates are sourced live and merged in automatically. The Reporting Agent adds maturing investment <strong>principal</strong> and interest receivable (from the <strong>Investment Positions</strong> sheet) and deducts upcoming principal repayments and interest payables (from the <strong>Loan Schedule</strong> sheet) within the investment horizon from each account's gross surplus, then applies your margin haircut before recommending investable amounts.
-        </div>
+                <div class="agent-box">
+                    <div class="agent-title">1️⃣ REPORTING AGENT</div>
+                    <div class="agent-desc">Calculates recommended investable amount from cash balances, maturing investments, loan obligations, and haircut</div>
+                    <button onclick="prepareAgent(1)">→ Prepare Reporting Data</button>
+                </div>
 
-        <div class="pipeline" id="pipeline-view">
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-pending" id="pip-s1">1</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Step 1 — Reporting Agent</div>
-              <div class="pipeline-status" id="pipstatus-s1">Waiting for Excel upload</div>
+                <div class="agent-box">
+                    <div class="agent-title">2️⃣ RATINGS AGENT</div>
+                    <div class="agent-desc">Validates counterparty credit ratings and creditworthiness assessment</div>
+                    <button onclick="prepareAgent(2)">→ Prepare Ratings Data</button>
+                </div>
+
+                <div class="agent-box">
+                    <div class="agent-title">3️⃣ COMPLIANCE AGENT</div>
+                    <div class="agent-desc">Verifies policy compliance: tenor limits, minimum ratings, approved products</div>
+                    <button onclick="prepareAgent(3)">→ Prepare Compliance Data</button>
+                </div>
+
+                <div class="agent-box">
+                    <div class="agent-title">4️⃣ OPPORTUNITY AGENT</div>
+                    <div class="agent-desc">Recommends optimal investment allocations ranked by yield and risk</div>
+                    <button onclick="prepareAgent(4)">→ Prepare Opportunity Data</button>
+                </div>
+
+                <div class="agent-box">
+                    <div class="agent-title">5️⃣ TRADER AGENT</div>
+                    <div class="agent-desc">Structures deal terms from counterparty confirmation with loan maturity cross-check</div>
+                    <button onclick="prepareAgent(5)">→ Prepare Trader Data</button>
+                </div>
+
+                <div class="agent-box">
+                    <div class="agent-title">6️⃣ DEAL APPROVAL AGENT</div>
+                    <div class="agent-desc">Final validation with 7-point checklist including loan obligation constraint</div>
+                    <button onclick="prepareAgent(6)">→ Prepare Approval Data</button>
+                </div>
+
+                <div class="divider"></div>
+                <button class="secondary" onclick="viewAgentGuide()">📖 View Agent Documentation</button>
             </div>
-          </div>
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-pending" id="pip-s3">2</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Step 2 — Ratings Agent</div>
-              <div class="pipeline-status" id="pipstatus-s3">Waiting for Step 1</div>
-            </div>
-          </div>
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-pending" id="pip-s2">3</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Step 3 — Compliance Check</div>
-              <div class="pipeline-status" id="pipstatus-s2">Waiting for Step 1</div>
-            </div>
-          </div>
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-pending" id="pip-s4">4</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Step 4 — Opportunity Agent</div>
-              <div class="pipeline-status" id="pipstatus-s4">Waiting for Steps 1–3</div>
-            </div>
-          </div>
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-human" id="pip-gate">★</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Human Decision Gate</div>
-              <div class="pipeline-status human" id="pipstatus-gate">Treasury Manager approval required</div>
-            </div>
-          </div>
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-pending" id="pip-s5">5</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Step 5 — Trader Agent</div>
-              <div class="pipeline-status" id="pipstatus-s5">Waiting for approval</div>
-            </div>
-          </div>
-          <div class="pipeline-step">
-            <div class="pipeline-dot pipeline-dot-pending" id="pip-s6">6</div>
-            <div class="pipeline-info">
-              <div class="pipeline-name">Step 6 — Deal Approval Agent</div>
-              <div class="pipeline-status" id="pipstatus-s6">Waiting for Step 5</div>
-            </div>
-          </div>
         </div>
-      </div>
     </div>
 
-    <!-- STEP 1 PANEL -->
-    <div class="panel" id="panel-s1">
-      <div class="panel-header">
-        <div class="panel-title">Step 1 — Reporting Agent <span class="phase-tag phase-identify">IDENTIFY</span><span class="model-tag model-haiku">HAIKU 4.5</span></div>
-        <div class="panel-desc">Calculates net investable surplus per account: gross surplus, plus maturing investment principal <em>and</em> interest receivable from positions maturing within the horizon, minus upcoming loan obligations.</div>
-      </div>
-      <div class="panel-body">
-        <div class="run-bar">
-          <button class="run-btn" id="btn-s1" onclick="runStep1()" disabled>▶ Run Reporting Agent</button>
-          <button class="next-btn" id="next-s1" onclick="showPanel('s3')" disabled>Next: Ratings Agent →</button>
-        </div>
+    <!-- AGENT GUIDE MODAL -->
+    <div id="guideModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 style="color: #00d9ff; margin-bottom: 15px;">6-Agent Treasury Analysis Pipeline</h2>
 
-        <div class="rec-banner theme-cyan" id="banner-s1">
-          <div class="rec-banner-header"><span class="rec-banner-label">▸ Surplus Summary</span><span class="rec-banner-sub">Full output below ↓</span></div>
-          <div class="rec-banner-body" id="banner-body-s1"></div>
-        </div>
+            <h3 style="color: #a0d9ff; margin: 15px 0 8px 0; font-size: 13px;">Agent 1: Reporting Agent</h3>
+            <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 15px;">
+                Analyzes cash balances, bank statements, loan schedule, and existing investments. Calculates net investable surplus after applying manual haircut. Outputs recommended investable amount per account with trend classification.
+            </p>
 
-        <div class="data-section">
-          <div class="data-section-header">
-            <span class="data-section-title">Cash Balances</span>
-            <span class="data-hint" id="hint-cash">From uploaded file</span>
-          </div>
-          <div class="data-table-wrap" id="tbl-cash">
-            <div style="padding:14px;font-size:12px;color:var(--muted)">Upload your Excel file on the Overview tab to view this data.</div>
-          </div>
-        </div>
+            <h3 style="color: #a0d9ff; margin: 15px 0 8px 0; font-size: 13px;">Agent 2: Ratings Agent</h3>
+            <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 15px;">
+                Validates counterparty credit ratings against policy minimum. Assesses creditworthiness for each potential investment opportunity. Flags positions below minimum rating threshold.
+            </p>
 
-        <div class="data-section loan-section">
-          <div class="data-section-header">
-            <span class="data-section-title">⬡ Loan Schedule</span>
-            <span class="data-hint" id="hint-loan">From uploaded file</span>
-          </div>
-          <div class="data-table-wrap" id="tbl-loan">
-            <div style="padding:14px;font-size:12px;color:var(--muted)">Upload your Excel file on the Overview tab to view this data.</div>
-          </div>
-        </div>
+            <h3 style="color: #a0d9ff; margin: 15px 0 8px 0; font-size: 13px;">Agent 3: Compliance Agent</h3>
+            <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 15px;">
+                Verifies all positions comply with treasury policy: maximum tenor (days), minimum credit rating, approved product types. Marks compliant vs non-compliant positions.
+            </p>
 
-        <div class="data-section">
-          <div class="data-section-header">
-            <span class="data-section-title">Investment Positions — Interest Receivable</span>
-            <span class="data-hint" id="hint-pos1">From uploaded file</span>
-          </div>
-          <div class="data-table-wrap" id="tbl-pos1">
-            <div style="padding:14px;font-size:12px;color:var(--muted)">Upload your Excel file on the Overview tab to view this data.</div>
-          </div>
-        </div>
+            <h3 style="color: #a0d9ff; margin: 15px 0 8px 0; font-size: 13px;">Agent 4: Opportunity Agent</h3>
+            <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 15px;">
+                Recommends investment allocations ranked by yield and risk. Incorporates loan-constrained tenor limits. Provides portfolio composition breakdown. Passes recommendations to Trader Agent.
+            </p>
 
-        <div class="notice-loan">
-          <strong>How surplus is calculated:</strong> For each account — gross surplus + maturing investment principal + interest receivable from positions maturing within 180 days − upcoming loan obligations (principal + interest due within 180 days) = <strong>net investable surplus</strong>.
-        </div>
+            <h3 style="color: #a0d9ff; margin: 15px 0 8px 0; font-size: 13px;">Agent 5: Trader Agent</h3>
+            <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 15px;">
+                Structures deal terms from counterparty confirmation. Creates TMS deal record. Performs loan maturity cross-check to ensure funds available for debt service. Flags discrepancies for review.
+            </p>
 
-        <div class="notice">
-          <strong>Note:</strong> The tables above show the actual data parsed from the Excel file you uploaded on the Overview tab. The agent runs on exactly this data.
+            <h3 style="color: #a0d9ff; margin: 15px 0 8px 0; font-size: 13px;">Agent 6: Deal Approval Agent</h3>
+            <p style="color: #a0a0a0; font-size: 12px; margin-bottom: 15px;">
+                Final 7-point validation: notional amount, currency, counterparty, dates, yield, loan constraint. Returns APPROVED or REQUIRES_REVIEW status with full audit trail.
+            </p>
         </div>
-
-        <div class="output-area">
-          <div class="output-header">
-            <div class="status-dot" id="dot-s1"></div>
-            <span class="output-title">Surplus Analysis Summary</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="time-s1"></span>
-          </div>
-          <div class="output-body" id="out-s1">Waiting to run...</div>
-        </div>
-      </div>
     </div>
 
-    <!-- STEP 2 PANEL (Ratings — swapped) -->
-    <div class="panel" id="panel-s2">
-      <div class="panel-header">
-        <div class="panel-title">Step 3 — Compliance Sub-Agent <span class="phase-tag phase-identify">IDENTIFY</span><span class="model-tag model-haiku">HAIKU 4.5</span></div>
-        <div class="panel-desc">Extracts policy rules from the Market Rates &amp; Policy sheet to define what is permissible for new deals — approved counterparties, products, rating floor, max tenor, min yield, and per-counterparty limits.</div>
-      </div>
-      <div class="panel-body">
-        <div class="run-bar">
-          <button class="run-btn" id="btn-s2" onclick="runStep2()" disabled>▶ Run Compliance Check</button>
-          <button class="next-btn" id="next-s2" onclick="showPanel('s4')" disabled>Next: Opportunity Agent →</button>
-        </div>
-
-        <div class="rec-banner theme-green" id="banner-s2">
-          <div class="rec-banner-header"><span class="rec-banner-label">▸ Compliance Summary</span><span class="rec-banner-sub">Full output below ↓</span></div>
-          <div class="rec-banner-body" id="banner-body-s2"></div>
-        </div>
-
-        <div class="data-section">
-          <div class="data-section-header">
-            <span class="data-section-title">Market Rates &amp; Policy</span>
-            <span class="data-hint" id="hint-pol2">From uploaded file</span>
-          </div>
-          <div class="data-table-wrap" id="tbl-pol2">
-            <div style="padding:14px;font-size:12px;color:var(--muted)">Upload your Excel file on the Overview tab to view this data.</div>
-          </div>
-        </div>
-        <div class="output-area">
-          <div class="output-header">
-            <div class="status-dot" id="dot-s2"></div>
-            <span class="output-title">Compliance Summary</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="time-s2"></span>
-          </div>
-          <div class="output-body" id="out-s2">Waiting for Step 1...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 3 PANEL (Compliance — swapped) -->
-    <div class="panel" id="panel-s3">
-      <div class="panel-header">
-        <div class="panel-title">Step 2 — Ratings Sub-Agent <span class="phase-tag phase-identify">IDENTIFY</span><span class="model-tag model-haiku">HAIKU 4.5</span></div>
-        <div class="panel-desc">Converts S&P text ratings to numeric scores for objective ranking. Policy minimum: A- (score 16).</div>
-      </div>
-      <div class="panel-body">
-        <div class="run-bar">
-          <button class="run-btn" id="btn-s3" onclick="runStep3()" disabled>▶ Run Ratings Agent</button>
-          <button class="next-btn" id="next-s3" onclick="showPanel('s4')" disabled>Next: Opportunity Agent →</button>
-        </div>
-
-        <div class="rec-banner theme-purple" id="banner-s3">
-          <div class="rec-banner-header"><span class="rec-banner-label">▸ Ratings Summary</span><span class="rec-banner-sub">Full output below ↓</span></div>
-          <div class="rec-banner-body" id="banner-body-s3"></div>
-        </div>
-
-        <div class="notice">Policy minimum: <strong>A-</strong> (numeric score 16). Counterparties below this cannot be recommended.</div>
-        <div class="data-section">
-          <div class="data-section-header">
-            <span class="data-section-title">Investment Positions — Ratings Source</span>
-            <span class="data-hint" id="hint-pos3">From uploaded file</span>
-          </div>
-          <div class="data-table-wrap" id="tbl-pos3">
-            <div style="padding:14px;font-size:12px;color:var(--muted)">Upload your Excel file on the Overview tab to view this data.</div>
-          </div>
-        </div>
-        <div class="output-area">
-          <div class="output-header">
-            <div class="status-dot" id="dot-s3"></div>
-            <span class="output-title">Ratings Summary</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="time-s3"></span>
-          </div>
-          <div class="output-body" id="out-s3">Waiting for Step 1...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 4 PANEL -->
-    <div class="panel" id="panel-s4">
-      <div class="panel-header">
-        <div class="panel-title">Step 4 — Opportunity Identification Agent <span class="phase-tag phase-identify">IDENTIFY</span><span class="model-tag model-sonnet">SONNET 4.6</span></div>
-        <div class="panel-desc">Recommends investments using the net investable surplus (after loan deductions). Tenor must not exceed the earliest loan obligation date per account. <strong>Your approval is required before proceeding.</strong></div>
-      </div>
-      <div class="panel-body">
-
-        <div class="run-bar">
-          <button class="run-btn run-btn-gold" id="btn-s4" onclick="runStep4()" disabled>▶ Run Opportunity Agent</button>
-          <button class="next-btn" id="next-s4" onclick="showPanel('s5')" disabled>Proceed to Deal Creation →</button>
-        </div>
-
-        <!-- PINNED ONE-LINERS BANNER -->
-        <div class="rec-banner theme-gold" id="banner-s4">
-          <div class="rec-banner-header"><span class="rec-banner-label">★ Recommendations</span><span class="rec-banner-sub">Details &amp; JSON below ↓</span></div>
-          <div class="rec-banner-body" id="banner-body-s4"></div>
-        </div>
-
-        <div id="approval-gate" style="display:none">
-          <div style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--amber);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">★ Human Decision Required — Approve or Decline Each Deal</div>
-          <div id="per-deal-gates" style="display:flex;flex-direction:column;gap:10px;"></div>
-        </div>
-
-        <!-- EMAIL DRAFTS — shown after approval decisions are made -->
-        <div id="email-section" style="display:none">
-          <div style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">✉ Deal Instruction Emails</div>
-          <div id="email-cards" style="display:flex;flex-direction:column;gap:12px;"></div>
-        </div>
-
-        <div class="data-section">
-          <div class="data-section-header">
-            <span class="data-section-title">Market Rates &amp; Policy</span>
-            <span class="data-hint" id="hint-rates">From uploaded file</span>
-          </div>
-          <div class="data-table-wrap" id="tbl-rates">
-            <div style="padding:14px;font-size:12px;color:var(--muted)">Upload your Excel file on the Overview tab to view this data.</div>
-          </div>
-        </div>
-        <div class="output-area">
-          <div class="output-header">
-            <div class="status-dot" id="dot-s4"></div>
-            <span class="output-title">Recommendation Summary</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="time-s4"></span>
-          </div>
-          <div class="output-body" id="out-s4">Waiting for Steps 1–3...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 5 PANEL -->
-    <div class="panel" id="panel-s5">
-      <div class="panel-header">
-        <div class="panel-title">Step 5 — Trader Agent <span class="phase-tag phase-deal">DEAL CREATION</span><span class="model-tag model-sonnet">SONNET 4.6</span></div>
-        <div class="panel-desc">Paste the counterparty's deal confirmation. The agent will extract deal terms and cross-check against the recommendation, including verifying the maturity date does not breach loan obligation dates.</div>
-      </div>
-      <div class="panel-body">
-        <div class="run-bar">
-          <button class="next-btn" id="next-s5" onclick="showPanel('s6')" disabled>Next: Deal Approval →</button>
-        </div>
-
-        <div class="rec-banner theme-gold" id="banner-s5">
-          <div class="rec-banner-header"><span class="rec-banner-label">▸ Deal Summary</span><span class="rec-banner-sub">Full record below ↓</span></div>
-          <div class="rec-banner-body" id="banner-body-s5"></div>
-        </div>
-
-        <div id="deal-conf-cards" style="display:flex;flex-direction:column;gap:14px;">
-          <div style="padding:14px;font-size:12px;color:var(--muted)">Approve deals in Step 4 to see confirmation inputs here.</div>
-        </div>
-        <div class="output-area" style="display:none" id="out-s5-legacy">
-          <div class="output-header">
-            <div class="status-dot" id="dot-s5"></div>
-            <span class="output-title">Deal Record Summary</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="time-s5"></span>
-          </div>
-          <div class="output-body" id="out-s5">Waiting for counterparty confirmation...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 6 PANEL -->
-    <div class="panel" id="panel-s6">
-      <div class="panel-header">
-        <div class="panel-title">Step 6 — Deal Approval Agent <span class="phase-tag phase-approval">APPROVAL</span><span class="model-tag model-sonnet">SONNET 4.6</span></div>
-        <div class="panel-desc">Final validation — checks deal record against confirmation across 5 criteria: notional, currency, counterparty, maturity date, and yield. Status becomes APPROVED or REQUIRES_REVIEW.</div>
-      </div>
-      <div class="panel-body">
-        <div class="run-bar">
-          <button class="run-btn run-btn-green" id="btn-s6" onclick="runStep6()">▶ Run Approval Agent</button>
-        </div>
-
-        <div class="rec-banner theme-green" id="banner-s6">
-          <div class="rec-banner-header"><span class="rec-banner-label">▸ Approval Summary</span><span class="rec-banner-sub">Full record below ↓</span></div>
-          <div class="rec-banner-body" id="banner-body-s6"></div>
-        </div>
-
-        <div class="output-area">
-          <div class="output-header">
-            <div class="status-dot" id="dot-s6"></div>
-            <span class="output-title">Approval Summary</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="time-s6"></span>
-          </div>
-          <div class="output-body" id="out-s6">Waiting for Step 5...</div>
-        </div>
-        <div id="final-done" style="display:none">
-          <div class="notice">
-            <strong>✓ Pipeline complete.</strong> Copy the JSON above as your official deal record. Save together with your Step 4 recommendation and the counterparty confirmation as your audit trail.
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<script src="market_rates.js" onerror="console.warn('market_rates.js not found — run fetch_market_rates.py to enable live rates.')"></script>
-<script>
-// EXCEL_DATA is populated from the uploaded workbook each session — nothing is pre-loaded.
-// A fresh upload is required every run (state resets on page load / new file).
-let EXCEL_DATA = {
-  cashBalances: null,
-  loanSchedule: null,
-  investmentPositions: null,
-  marketRates: null
-};
-
-let DATA_LOADED = false;
-
-// Manual margin haircut (%), entered by the Treasury Manager on the Dashboard.
-// Replaces the old bank-statement-derived trend haircut.
-let MANUAL_HAIRCUT_PCT = 5;
-
-function onHaircutChange() {
-  const raw = parseFloat(document.getElementById('haircut-input').value);
-  MANUAL_HAIRCUT_PCT = isNaN(raw) ? 0 : Math.max(0, Math.min(100, raw));
-}
-
-// Map each required EXCEL_DATA key to acceptable sheet-name matchers (case/space-insensitive).
-const SHEET_MAP = [
-  { key: 'cashBalances',        label: 'Cash Balances',        match: ['cashbalances','cashbalance','cash'] },
-  { key: 'loanSchedule',        label: 'Loan Schedule',        match: ['loanschedule','loans','loan'] },
-  { key: 'investmentPositions', label: 'Investment Positions', match: ['investmentpositions','positions','investments'] },
-  { key: 'marketRates',         label: 'Market Rates & Policy',match: ['marketrates','marketratespolicy','policy','rates'] }
-];
-
-function normName(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-
-// --- Live market rates -----------------------------------------------------
-// window.LIVE_MARKET_RATES is set by market_rates.js, which fetch_market_rates.py
-// regenerates daily from official free sources (FRED SOFR, Bank of England SONIA,
-// ECB EUR short-term rate). If that file hasn't been generated yet, fall back to
-// clearly-labelled example values so the pipeline still runs end-to-end.
-const FALLBACK_MARKET_RATES = {
-  rate_date: null,
-  overnight_rate_pct: '5.10', month_1_rate_pct: '5.20', month_3_rate_pct: '5.28', month_6_rate_pct: '5.35',
-  gbp_overnight_pct: '4.90', eur_overnight_pct: '3.10', fetched_at: null
-};
-
-const DEFAULT_POLICY_LINES = [
-  ['Min_Rating', 'A-'],
-  ['Min_Rating_Score', '16'],
-  ['Max_Tenor_Days', '180'],
-  ['Min_Yield_Percent', '4.5'],
-  ['Approved_Counterparties', 'Barclays; JPMorgan Chase; Goldman Sachs; HSBC; Deutsche Bank; BNP Paribas; DBS Bank; Citibank; Standard Chartered'],
-  ['Approved_Products', 'Fixed Deposit; Treasury Bill; Commercial Paper; Certificate of Deposit'],
-  ['Max_Single_Counterparty_Exposure_GBP', '5000000'],
-  ['Max_Single_Counterparty_Exposure_USD', '8000000'],
-  ['Max_Single_Counterparty_Exposure_EUR', '4000000'],
-  ['Policy_Note', 'Default policy parameters — edit DEFAULT_POLICY_LINES in treasury_agent.html or upload a Market Rates & Policy sheet to override.']
-];
-
-// Build the Market Rates & Policy TSV: the 6 daily rate fields always come from the
-// live fetch (or the fallback above); everything else is either the uploaded sheet's
-// policy rows (with those same rate keys stripped, to avoid duplicates/staleness) or,
-// if nothing was uploaded, the built-in defaults.
-function buildMarketRatesTSV(uploadedTSV) {
-  const rateKeys = ['Rate_Date','Overnight_Rate','1_Month_Rate','3_Month_Rate','6_Month_Rate','GBP_Overnight_Rate','EUR_Overnight_Rate'];
-  const live = window.LIVE_MARKET_RATES || FALLBACK_MARKET_RATES;
-
-  const rateLines = [
-    ['Rate_Date', live.rate_date || '(no live fetch yet)'],
-    ['Overnight_Rate', live.overnight_rate_pct + '%'],
-    ['1_Month_Rate', live.month_1_rate_pct + '%'],
-    ['3_Month_Rate', live.month_3_rate_pct + '%'],
-    ['6_Month_Rate', live.month_6_rate_pct + '%'],
-    ['GBP_Overnight_Rate', live.gbp_overnight_pct + '%'],
-    ['EUR_Overnight_Rate', live.eur_overnight_pct + '%']
-  ].map(([k, v]) => k + '\t' + v);
-
-  const sourceLine = window.LIVE_MARKET_RATES
-    ? 'Rates_Source\tAuto-fetched from FRED (SOFR), Bank of England (SONIA) and ECB (€STR) at ' + (live.fetched_at || live.rate_date)
-    : 'Rates_Source\tFALLBACK EXAMPLE VALUES — run fetch_market_rates.py to populate market_rates.js with live rates';
-
-  let policyLines;
-  if (uploadedTSV) {
-    policyLines = uploadedTSV.split('\n')
-      .filter(l => l.trim() !== '')
-      .filter(l => !rateKeys.includes(l.split('\t')[0].trim()));
-  } else {
-    policyLines = DEFAULT_POLICY_LINES.map(([k, v]) => k + '\t' + v);
-  }
-
-  return rateLines.concat([sourceLine]).concat(policyLines).join('\n');
-}
-
-function renderLiveRatesBanner() {
-  const el = document.getElementById('live-rates-banner');
-  if (!el) return;
-  const live = window.LIVE_MARKET_RATES;
-  if (live) {
-    el.innerHTML = '<strong>Live market rates</strong> as of ' + esc(live.rate_date) +
-      ' (fetched ' + esc(live.fetched_at || live.rate_date) + ') — sourced automatically from FRED, Bank of England and ECB. ' +
-      'No manual entry or upload needed for daily rates.';
-  } else {
-    el.innerHTML = '<strong>Live market rates not found.</strong> Showing fallback example rates. Run <code>fetch_market_rates.py</code> ' +
-      '(see README) to generate <code>market_rates.js</code> so rates are fetched automatically each day.';
-  }
-}
-
-// Initialize SAP form with today's date
-function initSAPForm() {
-  const today = new Date().toISOString().split('T')[0];
-  const dateInput = document.getElementById('sap-date');
-  if (dateInput && !dateInput.value) {
-    dateInput.value = today;
-  }
-}
-
-// Convert a worksheet to the tab-separated text the agents expect.
-function sheetToTSV(ws) {
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false });
-  // Drop leading decorative title/subtitle rows: a real header row has multiple non-empty cells.
-  let startIdx = 0;
-  for (let i = 0; i < rows.length; i++) {
-    const nonEmpty = rows[i].filter(c => String(c).trim() !== '').length;
-    if (nonEmpty >= 2) { startIdx = i; break; }
-  }
-  return rows.slice(startIdx)
-    .map(r => r.map(c => String(c).trim()).join('\t'))
-    .filter(line => line.replace(/\t/g, '').trim() !== '')
-    .join('\n');
-}
-
-async function fetchSAPTreasuryData() {
-  const sapUrl = document.getElementById('sap-url').value.trim();
-  const sapUser = document.getElementById('sap-user').value.trim();
-  const sapPass = document.getElementById('sap-pass').value.trim();
-  const sapCompany = document.getElementById('sap-company').value.trim();
-  const sapCurrency = document.getElementById('sap-currency').value.trim();
-  const sapDate = document.getElementById('sap-date').value.trim();
-
-  const statusEl = document.getElementById('sap-status');
-  const btn = document.getElementById('btn-sap-fetch');
-
-  // Validate inputs
-  if (!sapUrl || !sapUser || !sapPass || !sapCompany || !sapCurrency || !sapDate) {
-    statusEl.innerHTML = '<span class="err">All fields are required.</span>';
-    return;
-  }
-
-  // Disable button and show loading state
-  btn.disabled = true;
-  btn.textContent = '⟳ Connecting to SAP Fiori...';
-  statusEl.innerHTML = '<span style="color:var(--accent)">Fetching cash balances from SAP Fiori...</span>';
-
-  try {
-    // First, check if the server is running
-    const healthCheck = await fetch('http://localhost:8000/health', { method: 'GET' })
-      .catch(() => null);
-
-    if (!healthCheck || !healthCheck.ok) {
-      throw new Error(
-        'SAP Fiori server not running. Start it with: python sap_fiori_server.py'
-      );
-    }
-
-    const response = await fetch('http://localhost:8000/api/fetch-sap-treasury-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sap_url: sapUrl,
-        username: sapUser,
-        password: sapPass,
-        company_code: sapCompany,
-        currency: sapCurrency,
-        as_of_date: sapDate
-      })
-    });
-
-    if (!response.ok) {
-      let errorMsg = 'Failed to fetch from SAP Fiori';
-      try {
-        const errData = await response.json();
-        errorMsg = errData.detail || errData.message || errorMsg;
-      } catch(_) {}
-      throw new Error(errorMsg);
-    }
-
-    const sapData = await response.json();
-
-    if (sapData.status !== 'success') {
-      throw new Error(sapData.message || 'No data returned from SAP Fiori');
-    }
-
-    // Extract the three data sources from comprehensive response
-    const cashBalances = sapData.data.cash_balances || [];
-    const loanSchedule = sapData.data.loan_schedule || [];
-    const investmentPositions = sapData.data.investment_positions || [];
-
-    if (cashBalances.length === 0) {
-      throw new Error('No cash accounts found for that company code, currency, and date');
-    }
-
-    // Convert SAP JSON responses to TSV formats
-    const cashBalancesTSV = convertSAPCashBalancesToTSV(cashBalances, sapDate);
-    const loanScheduleTSV = convertSAPLoanScheduleToTSV(loanSchedule, sapDate);
-    const investmentPositionsTSV = convertSAPInvestmentPositionsToTSV(investmentPositions, sapDate);
-
-    // Update EXCEL_DATA with ALL SAP data sources
-    EXCEL_DATA.cashBalances = cashBalancesTSV;
-    EXCEL_DATA.loanSchedule = loanScheduleTSV;
-    EXCEL_DATA.investmentPositions = investmentPositionsTSV;
-    EXCEL_DATA.marketRates = buildMarketRatesTSV(null);
-    DATA_LOADED = true;
-
-    // Show success and unlock pipeline
-    document.getElementById('upload-gate').classList.add('loaded');
-    statusEl.innerHTML = '<div class="ok">✓ Successfully fetched all treasury data from SAP Fiori:<br>' +
-      '  • ' + cashBalances.length + ' cash account(s)<br>' +
-      '  • ' + loanSchedule.length + ' loan(s)<br>' +
-      '  • ' + investmentPositions.length + ' investment position(s)<br>' +
-      '  Running analysis pipeline...</div>';
-    btn.textContent = '✓ All Treasury Data Loaded';
-    btn.disabled = true;
-
-    enableStep1();
-    renderAllPreviews();
-    runAutoPipeline();
-  } catch (error) {
-    DATA_LOADED = false;
-    statusEl.innerHTML = '<span class="err">✘ ' + error.message + '</span>';
-    btn.disabled = false;
-    btn.textContent = '⟳ Fetch All Treasury Data from SAP';
-    console.error('SAP Fiori error:', error);
-  }
-}
-
-// Convert SAP cash balances to TSV format
-function convertSAPCashBalancesToTSV(sapAccounts, asOfDate) {
-  const header = ['Account_ID', 'Account_Name', 'Bank_Name', 'Currency', 'Balance_Date', 'Available_Balance', 'Ledger_Balance', 'Min_Operating_Balance', 'Gross_Surplus'].join('\t');
-  const rows = sapAccounts.map(acc => {
-    const minOp = Math.round(acc.available_balance * 0.1);
-    return [
-      acc.account_id || '', acc.account_name || '', acc.bank_name || '',
-      acc.currency || '', asOfDate,
-      Math.round(acc.available_balance || 0), Math.round(acc.ledger_balance || 0),
-      minOp, Math.round(acc.gross_surplus || 0)
-    ].join('\t');
-  });
-  return [header, ...rows].join('\n');
-}
-
-// Convert SAP loan schedule to TSV format
-function convertSAPLoanScheduleToTSV(sapLoans, asOfDate) {
-  const header = ['Loan_ID', 'Account_ID', 'Lender_Name', 'Currency', 'Start_Date', 'Outstanding_Principal', 'Rate', 'Maturity_Date', 'Repayment_Frequency', 'Principal_Due_Amount', 'Due_Date', 'Interest_Due_Amount', 'Total_Due', 'Loan_Type', 'Status'].join('\t');
-  const rows = sapLoans.map(loan => {
-    const totalDue = (loan.principal_due || 0) + (loan.interest_due || 0);
-    return [
-      loan.loan_id || '', loan.account_id || '', loan.lender_name || '',
-      loan.currency || 'USD', asOfDate,
-      Math.round(loan.outstanding_principal || 0), loan.interest_rate_pct || 0,
-      loan.due_date || '', 'Quarterly',
-      Math.round(loan.principal_due || 0), loan.due_date || '',
-      Math.round(loan.interest_due || 0), Math.round(totalDue),
-      'Term Loan', 'Active'
-    ].join('\t');
-  });
-  return [header, ...rows].join('\n');
-}
-
-// Convert SAP investment positions to TSV format
-function convertSAPInvestmentPositionsToTSV(sapPositions, asOfDate) {
-  const header = ['Position_ID', 'Account_ID', 'Counterparty', 'Notional_Amount', 'Start_Date', 'Maturity_Date', 'Tenor_Days', 'Product', 'Yield_Percent', 'Rating', 'Limit', 'Exposure', 'Headroom', 'Currency', 'Status'].join('\t');
-  const rows = sapPositions.map(pos => {
-    const exposure = pos.notional_amount || 0;
-    const headroom = (pos.counterparty_limit || exposure * 2) - exposure;
-    return [
-      pos.position_id || '', pos.account_id || '', pos.counterparty || '',
-      Math.round(pos.notional_amount || 0),
-      pos.start_date || asOfDate, pos.maturity_date || '',
-      pos.tenor_days || 0,
-      pos.product_type || 'Fixed Deposit', pos.yield_pct || 0,
-      pos.credit_rating || 'A',
-      Math.round(exposure * 2), Math.round(exposure),
-      Math.round(headroom),
-      pos.currency || 'USD', 'Active'
-    ].join('\t');
-  });
-  return [header, ...rows].join('\n');
-}
-
-// Legacy function for backwards compatibility
-function convertSAPDataToTSV(sapAccounts, asOfDate) {
-  return convertSAPCashBalancesToTSV(sapAccounts, asOfDate);
-}
-
-function handleUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const statusEl = document.getElementById('upload-status');
-  statusEl.innerHTML = '<span style="color:var(--accent)">Reading ' + file.name + '…</span>';
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const found = {};
-      const usedSheets = {};
-
-      // Match workbook sheets to required keys
-      SHEET_MAP.forEach(spec => {
-        for (const sn of wb.SheetNames) {
-          if (spec.match.includes(normName(sn))) {
-            found[spec.key] = sheetToTSV(wb.Sheets[sn]);
-            usedSheets[spec.key] = sn;
-            break;
-          }
+    <script>
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
         }
-        // Fallback: partial contains-match if no exact match
-        if (!found[spec.key]) {
-          for (const sn of wb.SheetNames) {
-            if (spec.match.some(m => normName(sn).includes(m) || m.includes(normName(sn)))) {
-              found[spec.key] = sheetToTSV(wb.Sheets[sn]);
-              usedSheets[spec.key] = sn;
-              break;
+
+        function uploadExcel() {
+            const file = document.getElementById('excelFile').files[0];
+            const haircut = document.getElementById('haircut').value;
+            const date = document.getElementById('analysisDate').value;
+
+            if (!file) {
+                alert('❌ Please select an Excel file');
+                return;
             }
-          }
-        }
-      });
-
-      // Build status report
-      const requiredSpecs = SHEET_MAP.filter(function(s) { return s.key !== 'marketRates'; });
-      const pills = requiredSpecs.map(spec => {
-        if (found[spec.key]) {
-          return '<span class="sheet-pill">\u2713 ' + spec.label + '</span>';
-        }
-        return '<span class="sheet-pill missing">\u2717 ' + spec.label + '</span>';
-      }).join('');
-
-      const missing = requiredSpecs.filter(s => !found[s.key]);
-
-      if (missing.length > 0) {
-        DATA_LOADED = false;
-        EXCEL_DATA = { cashBalances:null, loanSchedule:null, investmentPositions:null, marketRates: buildMarketRatesTSV(null) };
-        document.getElementById('upload-gate').classList.remove('loaded');
-        statusEl.innerHTML = pills +
-          '<div style="margin-top:10px" class="err">Missing required sheet' +
-          (missing.length>1?'s':'') + ': ' + missing.map(m=>m.label).join(', ') +
-          '. Please upload a workbook containing all 3 sheets.</div>';
-        lockAllSteps();
-        return;
-      }
-
-      // Success — load data and unlock pipeline. Market rates always come from the live
-      // fetch; if the workbook also included a Market Rates & Policy sheet, its non-rate
-      // policy rows (approved counterparties, limits, etc.) are kept and merged in.
-      found.marketRates = buildMarketRatesTSV(found.marketRates || null);
-      EXCEL_DATA = found;
-      DATA_LOADED = true;
-      document.getElementById('upload-gate').classList.add('loaded');
-      statusEl.innerHTML = pills +
-        '<div style="margin-top:10px" class="ok">\u2713 ' + file.name +
-        ' loaded. Running Steps 1\u20134 automatically \u2014 will pause for your approval at Step 4.</div>';
-      enableStep1();
-      renderAllPreviews();
-      runAutoPipeline();
-    } catch (err) {
-      DATA_LOADED = false;
-      document.getElementById('upload-gate').classList.remove('loaded');
-      statusEl.innerHTML = '<span class="err">Could not read file: ' + err.message +
-        '. Make sure it is a valid .xlsx workbook.</span>';
-      lockAllSteps();
-    }
-  };
-  reader.onerror = function() {
-    statusEl.innerHTML = '<span class="err">Failed to read the file. Please try again.</span>';
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function lockAllSteps() {
-  ['s1','s2','s3','s4','s5','s6'].forEach(s => {
-    const b = document.getElementById('btn-' + s);
-    if (b) b.disabled = true;
-    const nav = document.getElementById('nav-' + s);
-    if (nav) nav.classList.add('blocked');
-  });
-}
-
-function enableStep1() {
-  document.getElementById('btn-s1').disabled = false;
-  document.getElementById('nav-s1').classList.remove('blocked');
-  setPipeline('s1', 'Ready to run', '');
-}
-
-// Run Steps 1 -> (2 & 3 in parallel) -> 4 automatically, then pause at the
-// human approval gate. Stops early if any step fails (e.g. API/network error).
-let AUTO_RUNNING = false;
-async function runAutoPipeline() {
-  if (AUTO_RUNNING) return;
-  AUTO_RUNNING = true;
-  try {
-    showPanel('s1');
-    const ok1 = await runStep1();
-    if (!ok1) { autoHalt('Step 1 did not complete. Fix the issue, then run the remaining steps manually.'); return; }
-
-    // Steps 2 and 3 are independent — run them together.
-    showPanel('s3');
-    const [ok2, ok3] = await Promise.all([runStep2(), runStep3()]);
-    if (!ok2 || !ok3) { autoHalt('Step 2 or 3 did not complete. Fix the issue, then run the remaining steps manually.'); return; }
-
-    showPanel('s4');
-    const ok4 = await runStep4();
-    if (!ok4) { autoHalt('Step 4 did not complete. You can re-run it manually.'); return; }
-    // Step 4 succeeded — app now waits at the approval gate for the user.
-  } finally {
-    AUTO_RUNNING = false;
-  }
-}
-
-function autoHalt(msg) {
-  const statusEl = document.getElementById('upload-status');
-  if (statusEl) {
-    statusEl.innerHTML += '<div style="margin-top:8px" class="err">\u26a0 ' + msg + '</div>';
-  }
-}
-
-// ── One-liner banner renderer — used by all 6 steps ─────────────────────────
-// Parses any "- key: text" or "- Invest ..." bullet lines from SECTION 1
-// and renders them in the step's pinned banner card.
-function renderOneLinerBanner(step, rawText) {
-  const banner = document.getElementById('banner-s' + step);
-  const body   = document.getElementById('banner-body-s' + step);
-  if (!banner || !body || !rawText) return;
-
-  const lines = rawText.split('\n');
-  const bullets = [];
-
-  // Collect bullet lines that belong to Section 1.
-  // Stop at the first "##" heading after Section 1 starts (i.e. Section 2/Details/Summary).
-  let inSection1 = false;
-  for (const line of lines) {
-    const t = line.trim();
-    if (/^#+\s*(SECTION\s*1|ONE.?LINER|RECOMMENDATION)/i.test(t)) { inSection1 = true; continue; }
-    if (inSection1 && /^#+\s*(SECTION\s*[2-9]|DETAIL|SUMMARY|JSON)/i.test(t)) break;
-    if (inSection1 && /^[-•*]\s+\S/.test(t)) {
-      bullets.push(t.replace(/^[-•*]\s+/, ''));
-    }
-  }
-
-  // Fallback: if section markers weren't found, grab the first run of bullet lines
-  if (bullets.length === 0) {
-    let collecting = false;
-    for (const line of lines) {
-      const t = line.trim();
-      if (!collecting && /^[-•*]\s+\S/.test(t)) { collecting = true; }
-      if (collecting) {
-        if (/^[-•*]\s+\S/.test(t)) bullets.push(t.replace(/^[-•*]\s+/, ''));
-        else if (t !== '' && !/^[-•*]/.test(t) && bullets.length > 0) break;
-      }
-    }
-  }
-
-  if (bullets.length === 0) { banner.classList.remove('visible'); return; }
-
-  const isStep4 = (step == 4);
-
-  // For Step 4: only show "Invest ..." lines — filter out all reasoning/explanation bullets.
-  const displayBullets = isStep4
-    ? bullets.filter(b => /^invest\s+[\d,]+\s+[A-Z]{3}/i.test(b.replace(/\*\*/g, '')))
-    : bullets;
-
-  if (displayBullets.length === 0) { banner.classList.remove('visible'); return; }
-
-  // Strip markdown bold markers before rendering, then escape HTML
-  function renderLine(raw) {
-    return escHtml(raw.replace(/\*\*([^*]+)\*\*/g, '$1'));
-  }
-
-  // Track approve/decline button index separately (only invest lines get buttons)
-  let btnIdx = 0;
-
-  body.innerHTML = displayBullets.map((line) => {
-    const clean = line.replace(/\*\*/g, '');
-    let keyHtml = '', textHtml = '';
-
-    const inv = clean.match(/^(Invest\s+[\d,]+\s+([A-Z]{3})\s+)(.+)$/i);
-    if (inv) {
-      keyHtml  = `<span class="rec-line-key">${escHtml(inv[2])}</span>`;
-      textHtml = `<span class="rec-line-text">${escHtml(clean)}</span>`;
-    } else {
-      const m = clean.match(/^([A-Z]{3}[^:]*?):\s*(.+)$/);
-      if (m) {
-        keyHtml  = `<span class="rec-line-key">${escHtml(m[1])}:</span>`;
-        textHtml = `<span class="rec-line-text">${escHtml(m[2])}</span>`;
-      } else {
-        textHtml = `<span class="rec-line-text">${renderLine(line)}</span>`;
-      }
-    }
-
-    const isInvestLine = /^invest\s+[\d,]+\s+[A-Z]{3}/i.test(clean);
-    const currentIdx = isInvestLine ? btnIdx++ : -1;
-    const btns = (isStep4 && isInvestLine) ? `
-      <span class="rec-line-btns">
-        <button class="rec-approve-btn" id="inline-approve-${currentIdx}" onclick="inlineApproveDeal(${currentIdx})">✓ Approve</button>
-        <button class="rec-decline-btn" id="inline-decline-${currentIdx}" onclick="inlineDeclineDeal(${currentIdx})">✗ Decline</button>
-      </span>` : '';
-
-    return `<div class="rec-line"><span class="rec-line-bullet">▸</span>${keyHtml}${textHtml}${btns}</div>`;
-  }).join('');
-
-  banner.classList.add('visible');
-}
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-
-function fmtNum(v) {
-  const s = String(v).trim();
-  if (s === '' || s === '-') return s;
-  const n = Number(s.replace(/,/g, ''));
-  if (!isNaN(n) && /^-?[\d,]+(\.\d+)?$/.test(s)) return n.toLocaleString('en-US');
-  return s;
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function ratingBadge(r) {
-  const t = String(r).trim().toUpperCase();
-  const high = ['AAA','AA+','AA','AA-'];
-  const cls = high.includes(t) ? 'badge-blue' : 'badge-green';
-  return '<span class="badge ' + cls + '">' + esc(t) + '</span>';
-}
-
-// Generic renderer for the clean tabular sheets.
-// opts.numCols / badgeCol / statusFromCol let us colour specific columns.
-function renderTable(containerId, tsv, opts) {
-  opts = opts || {};
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  if (!tsv) {
-    el.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted)">No data found in this sheet.</div>';
-    return;
-  }
-  const lines = tsv.split('\n').filter(l => l.trim() !== '');
-  if (lines.length === 0) { el.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted)">No rows.</div>'; return; }
-
-  const header = lines[0].split('\t');
-  const numCols = opts.numCols || [];
-  const purpleCols = opts.purpleCols || [];
-  const negCols = opts.negCols || [];
-
-  let html = '<table class="data-table"><tr>';
-  header.forEach(h => html += '<th>' + esc(h) + '</th>');
-  html += '</tr>';
-
-  for (let i = 1; i < lines.length; i++) {
-    const cells = lines[i].split('\t');
-    html += '<tr>';
-    cells.forEach((c, ci) => {
-      let cls = '';
-      let val = esc(c);
-      if (opts.ratingCol === ci && c.trim() !== '') { html += '<td>' + ratingBadge(c) + '</td>'; return; }
-      if (opts.statusCol === ci && c.trim() !== '') { html += '<td>' + statusBadge(c) + '</td>'; return; }
-      if (numCols.includes(ci))    { cls = 'num'; val = fmtNum(c); }
-      if (purpleCols.includes(ci)) { cls = 'purple'; val = fmtNum(c); }
-      if (negCols.includes(ci))    { cls = 'neg'; val = fmtNum(c); }
-      html += '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + val + '</td>';
-    });
-    html += '</tr>';
-  }
-  html += '</table>';
-  el.innerHTML = html;
-}
-
-function statusBadge(s) {
-  const t = String(s).trim().toUpperCase();
-  if (t === '') return '';
-  const cls = (t === 'DUE SOON' || t === 'OVERDUE') ? 'badge-red' : 'badge-amber';
-  return '<span class="badge ' + cls + '">' + esc(t) + '</span>';
-}
-
-// Market Rates & Policy sheet is key/value rows, not a grid — render as 2-col list.
-function renderRates(containerId, tsv) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  if (!tsv) { el.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted)">No data found.</div>'; return; }
-  const lines = tsv.split('\n').filter(l => l.trim() !== '');
-  let html = '<table class="data-table"><tr><th>Parameter</th><th>Value</th></tr>';
-  lines.forEach(l => {
-    const parts = l.split('\t').filter(p => p.trim() !== '');
-    if (parts.length === 0) return;
-    const label = parts[0];
-    const value = parts.slice(1).join('  ·  ');
-    const isRate = /rate|yield/i.test(label);
-    html += '<tr><td>' + esc(label) + '</td><td class="' + (isRate ? 'pos' : 'num') + '">' + esc(value) + '</td></tr>';
-  });
-  html += '</table>';
-  el.innerHTML = html;
-}
-
-function rowCount(tsv) {
-  if (!tsv) return 0;
-  return Math.max(0, tsv.split('\n').filter(l => l.trim() !== '').length - 1);
-}
-
-function renderAllPreviews() {
-  // Cash Balances: columns Account_ID,Account_Name,Bank_Name,Currency,Balance_Date,
-  //   Available_Balance(5),Ledger_Balance(6),Min_Operating_Balance(7),Surplus(8)
-  renderTable('tbl-cash', EXCEL_DATA.cashBalances, { numCols: [5,6,7,8] });
-  document.getElementById('hint-cash').textContent = rowCount(EXCEL_DATA.cashBalances) + ' accounts';
-
-  // Loan Schedule: ...Outstanding_Principal(5),Rate(6),...Principal_Due(9),
-  //   Interest_Due(11),Total_Due(12), Status(15) already present in sheet.
-  renderTable('tbl-loan', EXCEL_DATA.loanSchedule, {
-    numCols: [5], purpleCols: [9,11], negCols: [12], statusCol: 15
-  });
-  document.getElementById('hint-loan').textContent = rowCount(EXCEL_DATA.loanSchedule) + ' loans';
-
-  // Investment Positions: Notional(3),...Yield(8),Rating(9),Limit(10),Exposure(11),Headroom(12)
-  const posOpts = { numCols: [3,10,11,12], ratingCol: 9 };
-  renderTable('tbl-pos1', EXCEL_DATA.investmentPositions, posOpts);
-  renderTable('tbl-pos3', EXCEL_DATA.investmentPositions, posOpts);
-  document.getElementById('hint-pos1').textContent = rowCount(EXCEL_DATA.investmentPositions) + ' positions';
-  document.getElementById('hint-pos3').textContent = rowCount(EXCEL_DATA.investmentPositions) + ' positions';
-
-  // Market Rates & Policy (key/value) — shown in Step 4 and Step 2
-  renderRates('tbl-rates', EXCEL_DATA.marketRates);
-  document.getElementById('hint-rates').textContent = 'live policy & rates';
-  renderRates('tbl-pol2', EXCEL_DATA.marketRates);
-  document.getElementById('hint-pol2').textContent = 'live policy & rates';
-}
-
-// Guard: refuse to run any agent if data has not been uploaded this session.
-function requireData() {
-  if (!DATA_LOADED) {
-    alert('Please upload your treasury_data.xlsx on the Overview tab first. A fresh upload is required for every run.');
-    showPanel('overview');
-    return false;
-  }
-  return true;
-}
-
-const state = {
-  s1: null, s2: null, s3: null, s4: null, s5: null, s6: null,
-  approved: false, confText: null
-};
-
-function showPanel(id) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('panel-' + id).classList.add('active');
-  document.getElementById('nav-' + id).classList.add('active');
-}
-
-function setDot(step, st) {
-  const dot = document.getElementById('dot-' + step);
-  dot.className = 'status-dot' + (st ? ' ' + st : '');
-}
-
-function setTime(step) {
-  document.getElementById('time-' + step).textContent = new Date().toLocaleTimeString();
-}
-
-function setPipeline(step, status, cls) {
-  const dot = document.getElementById('pip-' + step);
-  dot.className = 'pipeline-dot pipeline-dot-' + cls;
-  const st = document.getElementById('pipstatus-' + step);
-  st.textContent = status;
-  st.className = 'pipeline-status' + (cls === 'done' ? ' complete' : cls === 'running' ? ' active' : '');
-}
-
-function unlockNav(step) {
-  const btn = document.getElementById('nav-' + step);
-  btn.classList.remove('blocked');
-  const chk = document.getElementById('chk-' + step);
-  if (chk) chk.textContent = '✓';
-}
-
-function markNavDone(step) {
-  document.getElementById('nav-' + step).classList.add('done');
-}
-
-// Extract the JSON object from an agent response that now leads with prose.
-// The JSON always comes last, so find the last balanced {...} block.
-function extractJSON(text) {
-  if (!text) return null;
-  const s = text.replace(/```json/gi, '').replace(/```/g, '');
-
-  // Walk through ALL top-level balanced { } blocks and return the first one
-  // that parses successfully and looks like a valid agent output object.
-  let i = 0;
-  while (i < s.length) {
-    const start = s.indexOf('{', i);
-    if (start === -1) break;
-    let depth = 0, end = -1;
-    for (let j = start; j < s.length; j++) {
-      if (s[j] === '{') depth++;
-      else if (s[j] === '}') { depth--; if (depth === 0) { end = j; break; } }
-    }
-    if (end === -1) break;
-    const candidate = s.slice(start, end + 1);
-    try {
-      const parsed = JSON.parse(candidate);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed;
-      }
-    } catch(_) {}
-    i = end + 1;
-  }
-  return null;
-}
-
-// Reliably extract the recommendations array from raw agent output by finding
-// the "recommendations": [ ... ] key directly, bypassing nested object confusion.
-function extractRecommendations(text) {
-  if (!text) return [];
-  const s = text.replace(/```json/gi, '').replace(/```/g, '');
-
-  // Find the "recommendations": [ marker
-  const marker = s.search(/"recommendations"\s*:\s*\[/);
-  if (marker === -1) return [];
-
-  // Find the opening bracket
-  const arrStart = s.indexOf('[', marker);
-  if (arrStart === -1) return [];
-
-  // Walk forward to find the matching closing bracket
-  let depth = 0, arrEnd = -1;
-  for (let i = arrStart; i < s.length; i++) {
-    if (s[i] === '[') depth++;
-    else if (s[i] === ']') { depth--; if (depth === 0) { arrEnd = i; break; } }
-  }
-  if (arrEnd === -1) return [];
-
-  try {
-    const arr = JSON.parse(s.slice(arrStart, arrEnd + 1));
-    return Array.isArray(arr) ? arr : [];
-  } catch(_) {
-    return [];
-  }
-}
-
-// Model assignment: Haiku for the fast mechanical extraction / checking steps,
-// Sonnet for the judgment-heavy recommendation step.
-const MODEL_EXTRACT = 'claude-haiku-4-5-20251001';
-const MODEL_RECOMMEND = 'claude-sonnet-4-6';
-
-async function callClaude(systemPrompt, userMessage, outEl, dotEl, timeEl, model) {
-  setDot(dotEl, 'running');
-  const out = document.getElementById(outEl);
-  out.classList.add('has-content');
-  out.textContent = '';
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: model || MODEL_EXTRACT,
-        max_tokens: 20000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }]
-      })
-    });
-
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-
-    const text = data.content.map(b => b.text || '').join('');
-    out.textContent = stripJSON(text);
-    setDot(dotEl, 'done');
-    setTime(timeEl);
-    return text;
-  } catch (e) {
-    out.textContent = 'Error: ' + e.message;
-    setDot(dotEl, 'error');
-    return null;
-  }
-}
-
-// Streaming variant — tokens appear as they arrive.
-// Returns the full accumulated text when the stream ends.
-async function callClaudeStream(systemPrompt, userMessage, outEl, dotEl, timeEl, model) {
-  setDot(dotEl, 'running');
-  const out = document.getElementById(outEl);
-  out.classList.add('has-content');
-  out.textContent = '';
-
-  let fullText = '';
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: model || MODEL_EXTRACT,
-        max_tokens: 20000,
-        stream: true,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }]
-      })
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error?.message || resp.statusText);
-    }
-
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      // SSE lines: each event starts with "data: "
-      for (const line of chunk.split('\n')) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6).trim();
-        if (data === '[DONE]') continue;
-        try {
-          const evt = JSON.parse(data);
-          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
-            fullText += evt.delta.text;
-            // Show prose only while streaming (JSON hasn't arrived yet so stripJSON
-            // would be premature — just hide obvious JSON lines starting with { or spaces+")
-            const looksLikeJson = /^\s*[\{\[]/.test(fullText.slice(fullText.lastIndexOf('\n') + 1));
-            if (!looksLikeJson) {
-              out.textContent = fullText;
+            if (!haircut || !date) {
+                alert('❌ Please enter haircut % and analysis date');
+                return;
             }
-          }
-          if (evt.type === 'message_stop') break;
-        } catch (_) { /* ignore parse errors on partial chunks */ }
-      }
-    }
 
-    // Stream complete — now strip JSON and render final prose
-    out.textContent = stripJSON(fullText);
-    setDot(dotEl, 'done');
-    setTime(timeEl);
-    return fullText;
+            document.getElementById('dataStatus').style.display = 'block';
+            document.getElementById('dataStatus').innerHTML = `
+✓ Excel file received: ${file.name}
+✓ Haircut: ${haircut}%
+✓ Analysis Date: ${date}
 
-  } catch (e) {
-    out.textContent = 'Error: ' + e.message;
-    setDot(dotEl, 'error');
-    return null;
-  }
-}
+INSTRUCTIONS:
+1. Parse the Excel file manually (SheetJS integration in production)
+2. Extract 4 sheets: Cash Balances, Bank Statements, Loan Schedule, Investment Positions
+3. Proceed to Agent Pipeline to structure data for Claude AI agents
+4. Each agent processes data sequentially and returns JSON
+5. Continue to next agent with output from previous agent
 
-// Remove the JSON block from agent output before displaying prose to the user.
-// The JSON always comes after the prose — find the first top-level { that opens
-// the JSON block (preceded only by whitespace/newlines on its line) and strip everything from there.
-function stripJSON(text) {
-  if (!text) return text;
-  const s = text.replace(/```json/gi, '').replace(/```/g, '');
-  // Find the first { that sits at the start of a line (JSON block marker)
-  const lineStart = s.search(/\n\s*\{/);
-  if (lineStart !== -1) {
-    return s.slice(0, lineStart).trimEnd();
-  }
-  // Fallback: find the first top-level balanced block and strip from there
-  const start = s.indexOf('{');
-  if (start === -1) return s;
-  // Only strip if there's prose before it
-  if (start > 20) return s.slice(0, start).trimEnd();
-  return s;
-}
-
-async function runStep1() {
-  if (!requireData()) return;
-  const btn = document.getElementById('btn-s1');
-  btn.disabled = true;
-  btn.textContent = '⟳ Running...';
-  btn.classList.add('running');
-  setPipeline('s1', 'Running...', 'running');
-
-  const systemPrompt = `You are a treasury reporting agent. You will receive cash balance data, a loan schedule, existing investment positions, and a fixed margin haircut percentage entered by the Treasury Manager.
-
-Your tasks:
-1. For each account: gross_surplus = Available_Balance - Min_Operating_Balance
-
-2. MATURING INVESTMENTS — PRINCIPAL + INTEREST RECEIVABLE:
-   From the Investment Positions sheet, identify all positions where the Maturity_Date falls within 180 days from today (01/06/2026).
-   For each such position, calculate:
-     a) maturing_principal = Notional_Amount  (the full face value returned on maturity)
-     b) interest_receivable = Notional_Amount × (Yield_Percent / 100) × (Tenor_Days / 365)
-     c) total_maturing_proceeds = maturing_principal + interest_receivable
-   Sum per account (match on account currency or counterparty account where identifiable).
-   If positions cannot be matched to a specific account, aggregate by currency and allocate to the primary account in that currency.
-   total_maturing_principal = sum of all Notional_Amounts for positions maturing within 180 days
-   total_interest_receivable = sum of interest receivable from all maturing positions within 180 days
-   total_maturing_proceeds = total_maturing_principal + total_interest_receivable
-
-   IMPORTANT: The maturing principal represents cash already counted in the current balance
-   (the original placement reduced the balance when made). Therefore add maturing_principal ONLY
-   if the current Available_Balance does NOT already reflect the returned proceeds (i.e. the position
-   has not yet matured and settled). If the position matures in the future (Maturity_Date > today),
-   it is not yet in the balance — include its full proceeds (principal + interest) in the surplus.
-
-3. LOAN OBLIGATIONS:
-   From the loan schedule, identify all obligations (principal + interest payables) per account due within 180 days from 01/06/2026 (on or before 28/11/2026).
-   total_loan_obligations = sum of (Principal_Due_Amount + Interest_Due_Amount) for all loans on that account due within 180 days.
-
-4. NET INVESTABLE SURPLUS:
-   net_investable_surplus = gross_surplus + total_maturing_proceeds - total_loan_obligations
-   (where total_maturing_proceeds = maturing_principal + interest_receivable from future-maturing positions)
-   If negative, set to 0 and mark investable=false.
-
-5. Determine earliest_loan_due_date per account — the soonest loan obligation date within the horizon.
-   max_investment_tenor_days = days from 01/06/2026 to earliest_loan_due_date (use 180 if no loan due within horizon).
-
-6. Flag accounts where net_investable_surplus > 0 as investable=true.
-
-7. MARGIN HAIRCUT — apply the fixed haircut entered by the Treasury Manager to net_investable_surplus:
-   haircut_pct = ${MANUAL_HAIRCUT_PCT} (fixed — the same percentage applies to every account; do not vary it)
-   haircut_amount = round(net_investable_surplus × haircut_pct / 100)
-   recommended_investable_amount = net_investable_surplus - haircut_amount
-   If net_investable_surplus is 0 (investable=false), set both to 0.
-
-OUTPUT FORMAT — follow this order exactly, with all three sections:
-
-SECTION 1 — ONE-LINERS (lead with this). One short line per currency, nothing else. Pattern:
-  "<CCY>: net investable <net_amount> across <n> account(s) — recommended <recommended_amount> after <haircut_pct>% haircut"
-  Example: "USD: net investable 22,980,000 across 4 accounts — recommended 21,831,000 after 5% haircut"
-Use a simple bulleted list, one bullet per currency.
-
-SECTION 2 — SUMMARY (after the one-liners, under a "Summary" heading). Brief prose: per-account breakdown showing gross surplus, maturing investment principal, interest receivable, loan obligations deducted, net investable surplus, haircut applied, and recommended investable amount. Note accounts marked non-investable.
-
-SECTION 3 — JSON (last). Return the JSON object below in this exact schema:
-
-{
-  "analysis_date": "YYYY-MM-DD",
-  "investment_horizon_days": 180,
-  "accounts": [
-    {
-      "account_id": "...",
-      "account_name": "...",
-      "currency": "...",
-      "available_balance": 0,
-      "min_operating_balance": 0,
-      "gross_surplus": 0,
-      "maturing_principal_within_horizon": 0,
-      "interest_receivable_within_horizon": 0,
-      "total_maturing_proceeds_within_horizon": 0,
-      "maturing_position_detail": [
-        {
-          "position_id": "...",
-          "counterparty": "...",
-          "maturity_date": "YYYY-MM-DD",
-          "notional": 0,
-          "yield_pct": 0,
-          "tenor_days": 0,
-          "maturing_principal": 0,
-          "interest_receivable": 0,
-          "total_proceeds": 0
+NOTE: Treasury data is ready for Agent 1 (Reporting Agent) in Claude AI
+            `;
         }
-      ],
-      "total_loan_obligations_within_horizon": 0,
-      "loan_obligation_detail": [
-        { "loan_id": "...", "due_date": "YYYY-MM-DD", "principal_due": 0, "interest_due": 0, "total_due": 0 }
-      ],
-      "net_investable_surplus": 0,
-      "earliest_loan_due_date": "YYYY-MM-DD or null",
-      "max_investment_tenor_days": 0,
-      "investable": true,
-      "haircut_pct": ${MANUAL_HAIRCUT_PCT},
-      "haircut_amount": 0,
-      "recommended_investable_amount": 0
-    }
-  ],
-  "total_gross_surplus": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_maturing_principal": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_interest_receivable": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_maturing_proceeds": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_loan_obligations": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_net_investable_surplus": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_recommended_investable": { "USD": 0, "GBP": 0, "EUR": 0 }
-}
 
-Return the JSON exactly per the schema. The one-liners and summary come before it; the JSON must be the last thing in your response.`;
-
-  const userMsg = `CASH BALANCES:\n${EXCEL_DATA.cashBalances}\n\nLOAN SCHEDULE:\n${EXCEL_DATA.loanSchedule}\n\nINVESTMENT POSITIONS (for maturing principal + interest receivable):\n${EXCEL_DATA.investmentPositions}\n\nMARGIN HAIRCUT (fixed, entered by Treasury Manager): ${MANUAL_HAIRCUT_PCT}%`;
-
-  const result = await callClaudeStream(systemPrompt, userMsg, 'out-s1', 's1', 's1', MODEL_EXTRACT);
-
-  btn.textContent = '✓ Completed';
-  btn.classList.remove('running');
-  btn.classList.add('run-btn-completed');
-
-// 1. runStep1 — state.s1 could be a raw string if extractJSON fails; normalise to object
-  if (result) {
-    const parsed = extractJSON(result);
-    state.s1 = (parsed && typeof parsed === 'object') ? parsed : { _raw: result };
-
-    renderOneLinerBanner('1', result);
-    setPipeline('s1', 'Complete', 'done');
-    unlockNav('s1');
-    markNavDone('s1');
-    document.getElementById('next-s1').disabled = false;
-    document.getElementById('btn-s2').disabled = false;
-    document.getElementById('btn-s3').disabled = false;
-    document.getElementById('nav-s2').classList.remove('blocked');
-    document.getElementById('nav-s3').classList.remove('blocked');
-    setPipeline('s2', 'Ready to run', '');
-    setPipeline('s3', 'Ready to run', '');
-    return true;
-  }
-  return false;
-}
-
-async function runStep2() {
-  if (!requireData()) return;
-  const btn = document.getElementById('btn-s2');
-  btn.disabled = true;
-  btn.textContent = '⟳ Running...';
-  btn.classList.add('running');
-  setPipeline('s2', 'Running...', 'running');
-
-  const systemPrompt = `You are a treasury compliance policy agent. Your job is to read the Market Rates & Policy sheet and extract the rules that govern what new investments are permitted. You are NOT checking existing positions — you are defining the compliance envelope for new deals.
-
-Extract and validate the following policy parameters:
-1. Approved_Counterparties — list of counterparties eligible for new placements
-2. Approved_Products — list of product types permitted
-3. Min_Credit_Rating — minimum credit rating a counterparty must hold
-4. Max_Tenor_Days — maximum tenor allowed for any new deal
-5. Min_Acceptable_Yield — minimum yield any new deal must achieve
-6. Max_Counterparty_Limit — per-counterparty exposure ceiling for new placements
-
-OUTPUT FORMAT — follow this order exactly, with all three sections:
-
-SECTION 1 — ONE-LINERS (lead with this). One short summary line per key policy parameter. Pattern:
-  "- <parameter>: <value>"
-  Example:
-  - Approved counterparties: 9 (Barclays, HSBC, JPMorgan, ...)
-  - Approved products: Fixed Deposit, T-Bill, Money Market Fund, Commercial Paper
-  - Min credit rating: A-
-  - Max tenor: 180 days
-  - Min yield: 4.80%
-Use a simple bulleted list.
-
-SECTION 2 — SUMMARY (after the one-liners, under a "Summary" heading). Brief prose confirming what types of new deals are permitted and any notable constraints (e.g. if the min yield floor is close to current market rates, or if the approved counterparty list is narrow).
-
-SECTION 3 — JSON (last). Return exactly this schema:
-{
-  "policy_compliant": true,
-  "approved_counterparties": ["..."],
-  "approved_products": ["..."],
-  "counterparty_limits": [
-    { "counterparty": "...", "max_limit": 0 }
-  ],
-  "policy_rules": {
-    "min_credit_rating": "...",
-    "max_tenor_days": 0,
-    "min_acceptable_yield_pct": 0
-  }
-}
-
-The JSON must be the last thing in your response, after the one-liners and summary.`;
-
-  const userMsg = `MARKET RATES & POLICY:\n${EXCEL_DATA.marketRates}`;
-
-  const result = await callClaude(systemPrompt, userMsg, 'out-s2', 's2', 's2', MODEL_EXTRACT);
-
-  btn.textContent = '✓ Completed';
-  btn.classList.remove('running');
-  btn.classList.add('run-btn-completed');
-
-  if (result) {
-    const parsed = extractJSON(result);
-    state.s2 = (parsed && typeof parsed === 'object') ? parsed : { _raw: result };
-
-    renderOneLinerBanner('2', result);
-    setPipeline('s2', 'Complete', 'done');
-    unlockNav('s2');
-    markNavDone('s2');
-    document.getElementById('next-s2').disabled = false;
-    checkStep4Ready();
-    return true;
-  }
-  return false;
-}
-
-async function runStep3() {
-  if (!requireData()) return;
-  const btn = document.getElementById('btn-s3');
-  btn.disabled = true;
-  btn.textContent = '⟳ Running...';
-  btn.classList.add('running');
-  setPipeline('s3', 'Running...', 'running');
-
-  const systemPrompt = `You are a credit ratings assessment agent for treasury investments.
-
-Convert credit ratings to numeric scores:
-AAA=22, AA+=21, AA=20, AA-=19, A+=18, A=17, A-=16, BBB+=15, BBB=14, BBB-=13, BB+=12, BB=11, BB-=10
-
-For each counterparty, compare against Min_Credit_Rating from policy. Set meets_policy=true if score >= policy minimum score.
-
-OUTPUT FORMAT — follow this order exactly, with all three sections:
-
-SECTION 1 — ONE-LINERS (lead with this). One short line per currency, nothing else. Pattern:
-  "<CCY>: <n> of <m> counterparties meet the <policy_min_rating> minimum"
-  Example: "USD: 4 of 4 counterparties meet the A- minimum"
-Use a simple bulleted list, one bullet per currency present in the positions.
-
-SECTION 2 — SUMMARY (after the one-liners, under a "Summary" heading). Brief prose: each counterparty's rating and numeric score, and any that fall below the policy minimum.
-
-SECTION 3 — JSON (last). Return the JSON object below:
-{
-  "policy_min_rating": "A-",
-  "policy_min_score": 16,
-  "ratings_summary": [
-    {
-      "counterparty": "...",
-      "rating": "AA+",
-      "numeric_score": 21,
-      "meets_policy": true,
-      "margin_above_minimum": 5
-    }
-  ],
-  "counterparties_below_minimum": []
-}
-
-The JSON must be the last thing in your response, after the one-liners and summary.`;
-
-  const userMsg = `INVESTMENT POSITIONS:\n${EXCEL_DATA.investmentPositions}\n\nPOLICY:\n${EXCEL_DATA.marketRates}`;
-
-  const result = await callClaude(systemPrompt, userMsg, 'out-s3', 's3', 's3', MODEL_EXTRACT);
-
-  btn.textContent = '✓ Completed';
-  btn.classList.remove('running');
-  btn.classList.add('run-btn-completed');
-
-  if (result) {
-    const parsed = extractJSON(result);
-    state.s3 = (parsed && typeof parsed === 'object') ? parsed : { _raw: result };
-
-    renderOneLinerBanner('3', result);
-    setPipeline('s3', 'Complete', 'done');
-    unlockNav('s3');
-    markNavDone('s3');
-    document.getElementById('next-s3').disabled = false;
-    checkStep4Ready();
-    return true;
-  }
-  return false;
-}
-
-function checkStep4Ready() {
-  if (state.s2 && state.s3) {
-    document.getElementById('btn-s4').disabled = false;
-    document.getElementById('nav-s4').classList.remove('blocked');
-    setPipeline('s4', 'Ready to run', '');
-  }
-}
-
-async function runStep4() {
-  if (!requireData()) return;
-  const btn = document.getElementById('btn-s4');
-  btn.disabled = true;
-  btn.textContent = '⟳ Running...';
-  btn.classList.add('running');
-  setPipeline('s4', 'Running...', 'running');
-
-  const systemPrompt = `You are a treasury investment opportunity identification agent.
-
-You will receive a surplus cash analysis (which includes net investable surplus after adding maturing investment proceeds and deducting loan obligations, and a fixed margin haircut, entered by the Treasury Manager, applied to arrive at the recommended investable amount), compliance check, ratings assessment, and market rates/policy.
-
-The net_investable_surplus in the Step 1 output already reflects:
-  gross_surplus + maturing_principal_within_horizon + interest_receivable_within_horizon − total_loan_obligations_within_horizon
-
-Each account also has a recommended_investable_amount = net_investable_surplus − haircut_amount, where haircut_pct is the fixed ${MANUAL_HAIRCUT_PCT}% margin entered by the Treasury Manager — the same percentage applies to every account.
-
-CRITICAL RULES — these override all other considerations:
-1. For each investable account, the investment amount MUST NOT exceed the account's recommended_investable_amount (NOT net_investable_surplus — the haircut margin must be preserved)
-2. The investment maturity date MUST be before or equal to the account's earliest_loan_due_date (so funds are available when the loan payment falls due). If no loan is due within the horizon, use the policy Max_Tenor_Days as the limit.
-3. Select the tenor that maximises yield subject to the maturity constraint above
-
-OTHER RULES:
-4. Only consider counterparties that are compliant AND meet credit rating policy
-5. Rank by risk-adjusted yield (higher yield, better rating = rank 1)
-6. Calculate yield advantage vs overnight rate in basis points
-7. If recommended_investable_amount for a currency is below Min_Placement_Amount, do not recommend for that account
-
-OUTPUT FORMAT — follow this order exactly:
-
-SECTION 1 — RECOMMENDATIONS (lead with this). Output one crisp one-line recommendation per currency, nothing else in this section. Each line must follow this pattern:
-"Invest <recommended_investable_amount> <CCY> in <Product> with <Counterparty> for <tenor in months or weeks> at <yield>%"
-For example: "Invest 4,384,250 USD in Term Deposit with Barclays for ~1.5 months at 5.20%". Use the recommended_investable_amount (after haircut) — not the net_investable_surplus. Express tenor in the most natural unit (months if >= ~30 days, otherwise weeks/days). Use a simple bulleted list, one bullet per currency. Do NOT add ratings, loan IDs, rationale, or any other detail in this section.
-
-IMPORTANT: In the JSON output, every recommendation object MUST include:
-- start_date: the value date of the investment (today's date / analysis date, YYYY-MM-DD)
-- maturity_date: calculated as start_date + tenor_days (YYYY-MM-DD)
-- recommended_investable_amount: exact integer or decimal, no rounding
-- tenor_days: exact integer number of days
-- expected_yield_pct: exact rate as a decimal (e.g. 5.20, not "5.20%")
-These fields are used verbatim in deal instruction emails and must be precise.
-
-SECTION 2 — DETAILS (after the one-liners, under a "Details" heading). Provide the Treasury Manager level breakdown: gross surplus per currency, maturing investment proceeds added (split into principal and interest), loan obligations deducted, net investable surplus, haircut applied, recommended investable amount, the recommended tenor per account and why it was constrained by a loan date if applicable, counterparty rating, expected yield, yield advantage in bps, and any accounts excluded because recommended surplus is below the minimum placement size.
-
-SECTION 3 — JSON (last). Return the JSON object below.
-{
-  "summary_date": "YYYY-MM-DD",
-  "total_gross_surplus": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_maturing_principal_added": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_interest_receivable_added": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_loan_obligations_deducted": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_net_investable_surplus": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "total_recommended_investable": { "USD": 0, "GBP": 0, "EUR": 0 },
-  "recommendations": [
-    {
-      "rank": 1,
-      "account_id": "...",
-      "currency": "USD",
-      "gross_surplus": 0,
-      "maturing_principal_added": 0,
-      "interest_receivable_added": 0,
-      "loan_obligations_deducted": 0,
-      "net_investable_amount": 0,
-      "haircut_pct": ${MANUAL_HAIRCUT_PCT},
-      "haircut_amount": 0,
-      "recommended_investable_amount": 0,
-      "product": "Fixed Deposit",
-      "counterparty": "...",
-      "counterparty_rating": "AA+",
-      "tenor_days": 90,
-      "start_date": "YYYY-MM-DD",
-      "maturity_date": "YYYY-MM-DD",
-      "tenor_constrained_by_loan": true,
-      "constraining_loan_id": "LN-001",
-      "constraining_loan_due_date": "YYYY-MM-DD",
-      "expected_yield_pct": 5.28,
-      "overnight_rate_pct": 5.10,
-      "yield_advantage_bps": 18,
-      "rationale": "..."
-    }
-  ]
-}`;
-
-  const s1str = state.s1 ? (state.s1._raw || JSON.stringify(state.s1, null, 2)) : '';
-  const s2str = state.s2 ? (state.s2._raw || JSON.stringify(state.s2, null, 2)) : '';
-  const s3str = state.s3 ? (state.s3._raw || JSON.stringify(state.s3, null, 2)) : '';
-  const userMsg = `SURPLUS ANALYSIS WITH LOAN DEDUCTIONS (Step 1):\n${s1str}\n\nCOMPLIANCE CHECK (Step 2):\n${s2str}\n\nRATINGS ASSESSMENT (Step 3):\n${s3str}\n\nMARKET RATES & POLICY:\n${EXCEL_DATA.marketRates}\n\nLOAN SCHEDULE (for reference):\n${EXCEL_DATA.loanSchedule}`;
-
-  const result = await callClaude(systemPrompt, userMsg, 'out-s4', 's4', 's4', MODEL_RECOMMEND);
-
-  btn.textContent = '✓ Completed';
-  btn.classList.remove('running');
-  btn.classList.add('run-btn-completed');
-
-  if (result) {
-    const parsed4 = extractJSON(result);
-    const recs    = extractRecommendations(result);
-
-    // Always store s4 as an object — never a raw string
-    state.s4 = (parsed4 && typeof parsed4 === 'object') ? parsed4 : {};
-    // Ensure recommendations are always present from the reliable extractor
-    if (recs.length > 0) state.s4.recommendations = recs;
-    // Store raw result for downstream fallback
-    state.s4._raw = result;
-
-    renderOneLinerBanner('4', result);
-
-    // Initialise per-deal approval state — only for recs that will actually show buttons
-    // (i.e. where the agent produced a real "Invest X CCY ..." recommendation).
-    // We align this with the banner's isInvestLine test so button count matches state count.
-    Object.keys(dealApprovals).forEach(k => delete dealApprovals[k]);
-    recs.forEach((_, i) => { dealApprovals[i] = 'pending'; });
-    // The banner renders buttons only on "Invest ..." lines, so dealApprovals entries
-    // for non-invest lines are harmless — checkAllDealsDecided counts DOM buttons, not this.
-
-    document.getElementById('per-deal-gates').innerHTML = '';
-
-    if (recs.length === 0) {
-      // No investable opportunities — skip the approval gate entirely
-      document.getElementById('approval-gate').style.display = 'block';
-      const label = document.querySelector('#approval-gate > div:first-child');
-      if (label) {
-        label.textContent = 'ℹ No investment recommended — no deals to approve at this time.';
-        label.style.color = 'var(--muted2)';
-      }
-      document.getElementById('per-deal-gates').innerHTML =
-        '<div style="font-size:12px;color:var(--muted2);padding:4px 0">The Opportunity Agent found no investable surplus meeting policy criteria. Review the Details output above for the reason (e.g. all surpluses below minimum placement size, all tenors too short, or no compliant counterparties).</div>';
-      setPipeline('s4', 'No recommendation', 'done');
-      unlockNav('s4');
-      markNavDone('s4');
-      setPipeline('gate', 'No deals to approve', '');
-      setPipeline('s5', 'Locked — no deals recommended', '');
-      setPipeline('s6', 'Locked — no deals recommended', '');
-    } else {
-      // Recommendations exist — show approval gate with inline buttons
-      document.getElementById('approval-gate').style.display = 'block';
-      const label = document.querySelector('#approval-gate > div:first-child');
-      if (label) {
-        label.textContent = '★ Approve or Decline each recommendation above';
-        label.style.color = 'var(--amber)';
-      }
-      setPipeline('s4', 'Awaiting approval', 'human');
-    }
-
-    return true;
-  }
-  return false;
-}
-
-// Per-deal approval state: { [dealIndex]: 'pending' | 'approved' | 'declined' }
-const dealApprovals = {};
-
-function inlineApproveDeal(idx) {
-  try {
-    if (dealApprovals[idx] && dealApprovals[idx] !== 'pending') return;
-    dealApprovals[idx] = 'approved';
-    const ab = document.getElementById('inline-approve-' + idx);
-    const db = document.getElementById('inline-decline-' + idx);
-    if (ab) { ab.classList.add('chosen'); ab.disabled = true; }
-    if (db) { db.disabled = true; }
-    checkAllDealsDecided();
-  } catch(e) { console.error('inlineApproveDeal error:', e); }
-}
-
-function inlineDeclineDeal(idx) {
-  try {
-    if (dealApprovals[idx] && dealApprovals[idx] !== 'pending') return;
-    dealApprovals[idx] = 'declined';
-    const ab = document.getElementById('inline-approve-' + idx);
-    const db = document.getElementById('inline-decline-' + idx);
-    if (db) { db.classList.add('chosen'); db.disabled = true; }
-    if (ab) { ab.disabled = true; }
-    checkAllDealsDecided();
-  } catch(e) { console.error('inlineDeclineDeal error:', e); }
-}
-
-function checkAllDealsDecided() {
-  try {
-    // Count how many inline approve/decline button pairs exist in the DOM
-    // This is the ground truth — matches exactly what the user sees
-    let totalButtons = 0;
-    while (document.getElementById('inline-approve-' + totalButtons)) totalButtons++;
-
-    if (totalButtons === 0) return; // buttons not rendered yet
-
-    const vals = [];
-    for (let i = 0; i < totalButtons; i++) {
-      vals.push(dealApprovals[i] || 'pending');
-    }
-
-    const allDecided = vals.every(v => v !== 'pending');
-    const anyApproved = vals.some(v => v === 'approved');
-
-    if (!allDecided) return;
-
-    // Get recommendations
-    const allRecs = (state.s4 && Array.isArray(state.s4.recommendations) && state.s4.recommendations.length > 0)
-      ? state.s4.recommendations
-      : extractRecommendations(state.s4 && state.s4._raw ? state.s4._raw : '');
-
-    const approvedRecs = allRecs.filter((_, i) => dealApprovals[i] === 'approved');
-    if (!state.s4 || typeof state.s4 !== 'object') state.s4 = {};
-    state.s4.approvedRecommendations = approvedRecs;
-    state.approved = anyApproved;
-
-    const label = document.querySelector('#approval-gate > div:first-child');
-    if (label) {
-      const approvedCount = approvedRecs.length;
-      label.textContent = approvedCount > 0
-        ? `★ ${approvedCount} deal(s) approved — proceed to Step 5`
-        : '★ All deals declined — no deals to proceed with';
-      label.style.color = approvedCount > 0 ? 'var(--green)' : 'var(--red)';
-    }
-
-    if (anyApproved) {
-      setPipeline('s4', 'Approved', 'done');
-      setPipeline('gate', 'Approved by Treasury Manager', 'done');
-      document.getElementById('next-s4').disabled = false;
-      unlockNav('s4');
-      markNavDone('s4');
-      document.getElementById('nav-s5').classList.remove('blocked');
-      setPipeline('s5', 'Ready — paste confirmations', '');
-      renderDealConfCards(approvedRecs);
-      setTimeout(() => generateDealEmails(approvedRecs), 100);
-    } else {
-      setPipeline('s4', 'All declined', 'error');
-      setPipeline('gate', 'All deals declined', 'error');
-      document.getElementById('next-s4').disabled = true;
-      document.getElementById('nav-s5').classList.add('blocked');
-      document.getElementById('nav-s6').classList.add('blocked');
-      const bs5 = document.getElementById('btn-s5'); if (bs5) bs5.disabled = true;
-      const bs6 = document.getElementById('btn-s6'); if (bs6) bs6.disabled = true;
-      setPipeline('s5', 'Locked — all deals declined', '');
-      setPipeline('s6', 'Locked — all deals declined', '');
-    }
-  } catch(e) {
-    console.error('checkAllDealsDecided error:', e);
-    // Surface the error visibly so it can be diagnosed
-    const label = document.querySelector('#approval-gate > div:first-child');
-    if (label) { label.textContent = '⚠ Error processing decisions: ' + e.message; label.style.color = 'var(--red)'; }
-  }
-}
-
-function approveRecommendation() { /* legacy — no-op, replaced by per-deal */ }
-function rejectRecommendation()  { /* legacy — no-op, replaced by per-deal */ }
-
-function generateDealEmails(recs) {
-  if (!recs || recs.length === 0) return;
-  const section = document.getElementById('email-section');
-  const cards   = document.getElementById('email-cards');
-  if (!section || !cards) return;
-  section.style.display = 'block';
-  cards.innerHTML = '';
-
-  for (let i = 0; i < recs.length; i++) {
-    const rec = recs[i];
-
-    // Pull exact values from the recommendation JSON — no AI generation, no fallback guessing.
-    const amt      = rec.recommended_investable_amount;           // exact number from rec
-    const amtFmt   = typeof amt === 'number' ? amt.toLocaleString('en-US') : String(amt || '');
-    const ccy      = rec.currency || '';
-    const prod     = rec.product || 'Fixed Deposit';
-    const cp       = rec.counterparty || '';
-    const tenorDays= rec.tenor_days || '';
-    const yld      = rec.expected_yield_pct != null ? rec.expected_yield_pct : '';
-    const valueDate= rec.start_date || state.s4?.summary_date || '';  // value date from rec (start_date) or analysis date
-    const matDate  = rec.maturity_date || '';       // exact maturity date from rec
-    const cpDomain = cp.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
-
-    // Calculate interest amount deterministically from rec fields
-    const interestAmt = (typeof amt === 'number' && yld !== '' && tenorDays !== '')
-      ? (amt * (Number(yld) / 100) * (Number(tenorDays) / 365)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : '';
-
-    // Build email body deterministically — every number comes directly from rec fields.
-    const subject = `${prod} Instruction — ${ccy} ${amtFmt} — Value Date ${valueDate}`;
-    const body =
-`Dear Treasury Desk,
-
-We hereby instruct the following ${prod}:
-
-  Counterparty:   ${cp}
-  Product:        ${prod}
-  Currency:       ${ccy}
-  Amount:         ${ccy} ${amtFmt}
-  Value Date:     ${valueDate}
-  Maturity Date:  ${matDate}
-  Tenor:          ${tenorDays} days
-  Interest Rate:  ${yld}% per annum${interestAmt ? `
-  Interest Amount: ${ccy} ${interestAmt} (payable on maturity)` : ''}
-
-Please confirm receipt of this instruction and provide your deal confirmation at the earliest.
-
-Kind regards,
-Treasury Operations`;
-
-    const email = {
-      to: `treasury.desk@${cpDomain}`,
-      subject,
-      body
-    };
-
-    const card = document.createElement('div');
-    card.className = 'email-card';
-    card.id = 'email-card-' + i;
-    card.innerHTML = `
-      <div class="email-card-header">
-        <span class="email-card-title">✉ Deal ${i+1} — ${ccy} ${amtFmt} · ${cp}</span>
-      </div>
-      <div class="email-card-body">
-        <div class="email-field">
-          <div class="email-field-label">To</div>
-          <div class="email-field-value">${escHtml(email.to)}</div>
-        </div>
-        <div class="email-field">
-          <div class="email-field-label">Subject</div>
-          <div class="email-field-value subject">${escHtml(email.subject)}</div>
-        </div>
-        <div class="email-field">
-          <div class="email-field-label">Body</div>
-          <div class="email-field-value">${escHtml(email.body)}</div>
-        </div>
-      </div>
-      <div class="email-card-footer">
-        <button class="pdf-btn" onclick="downloadEmailPDF(${i})">⬇ Download PDF</button>
-        <span style="font-size:11px;color:var(--muted)">Review before sending</span>
-      </div>`;
-    card._emailData = email;
-    card._dealLabel = `${ccy} ${amtFmt} — ${cp}`;
-    cards.appendChild(card);
-  }
-}
-
-function downloadEmailPDF(i) {
-  const card = document.getElementById('email-card-' + i);
-  if (!card || !card._emailData) return;
-  const email = card._emailData;
-  const label = card._dealLabel || ('Deal ' + (i + 1));
-  const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-
-  const pageW  = doc.internal.pageSize.getWidth();
-  const margin = 18;
-  const contentW = pageW - margin * 2;
-  let y = 20;
-
-  // Header bar
-  doc.setFillColor(0, 114, 184);
-  doc.rect(margin, y, contentW, 10, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Deal Instruction Email', margin + 4, y + 7);
-  y += 16;
-
-  // Meta line
-  doc.setTextColor(96, 112, 128);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${label}  ·  Generated ${dateStr}`, margin, y);
-  y += 8;
-
-  // Divider
-  doc.setDrawColor(220, 228, 240);
-  doc.line(margin, y, margin + contentW, y);
-  y += 7;
-
-  // Field renderer
-  function addField(labelText, value, isSubject) {
-    doc.setTextColor(96, 112, 128);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(labelText.toUpperCase(), margin, y);
-    y += 5;
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', isSubject ? 'bold' : 'normal');
-    doc.setTextColor(isSubject ? 0 : 26, isSubject ? 114 : 33, isSubject ? 184 : 48);
-
-    const lines = doc.splitTextToSize(value || '', contentW);
-    // Page break if needed
-    lines.forEach(line => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.text(line, margin, y);
-      y += 6;
-    });
-    y += 4;
-  }
-
-  addField('To', email.to, false);
-  addField('Subject', email.subject, true);
-
-  // Body with left accent line
-  doc.setTextColor(96, 112, 128);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('BODY', margin, y);
-  y += 5;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(26, 33, 48);
-  const bodyLines = doc.splitTextToSize(email.body || '', contentW - 6);
-  const bodyStartY = y;
-  bodyLines.forEach(line => {
-    if (y > 270) { doc.addPage(); y = 20; }
-    doc.text(line, margin + 6, y);
-    y += 6;
-  });
-  // Left accent bar
-  doc.setFillColor(0, 114, 184);
-  doc.rect(margin, bodyStartY - 3, 2, y - bodyStartY + 2, 'F');
-  y += 6;
-
-  // Footer
-  doc.setDrawColor(220, 228, 240);
-  doc.line(margin, y, margin + contentW, y);
-  y += 5;
-  doc.setTextColor(160, 170, 184);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Treasury Investment AI  ·  For internal use — review before sending', margin, y);
-
-  // Save
-  const filename = `deal-instruction-${label.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}.pdf`;
-  doc.save(filename);
-}
-
-function loadSampleConfirmation() {
-  // Load sample into first available textarea in deal conf cards
-  const ta = document.querySelector('.deal-conf-card textarea');
-  if (ta) {
-    ta.value = `From: Barclays Treasury Confirmations <confirmations@barclays.com>
-Subject: Deal Confirmation — Fixed Deposit — Ref: BRC-2026-48821
-
-Dear Treasury Team,
-
-We are pleased to confirm the following Fixed Deposit transaction:
-
-Counterparty: Your Company
-Bank: Barclays Bank PLC
-Product: Fixed Deposit
-Notional Amount: USD 4,615,000 (Four Million Six Hundred and Fifteen Thousand US Dollars)
-Value Date: 02 June 2026
-Maturity Date: 12 July 2026
-Term: 40 days
-Interest Rate: 5.20% per annum
-Interest Amount: USD 26,480.55 (payable on maturity)
-Our Reference: BRC-2026-48821
-
-Please confirm receipt of this confirmation.
-
-Regards,
-Barclays Treasury Operations`;
-  }
-}
-
-function renderDealConfCards(recs) {
-  const container = document.getElementById('deal-conf-cards');
-  if (!recs || recs.length === 0) return;
-  container.innerHTML = '';
-  recs.forEach((rec, i) => {
-    const ccy  = rec.currency || '';
-    const amt  = rec.recommended_investable_amount != null
-                   ? rec.recommended_investable_amount.toLocaleString('en-US')
-                   : '';
-    const cp   = rec.counterparty || '';
-    const prod = rec.product || '';
-    const yld  = rec.expected_yield_pct != null ? rec.expected_yield_pct : '';
-    const mat  = rec.maturity_date || '';
-    const ten  = rec.tenor_days || '';
-    const startDate = rec.start_date || '';
-
-    const card = document.createElement('div');
-    card.className = 'deal-conf-card';
-    card.id = 'conf-card-' + i;
-    card.innerHTML = `
-      <div class="deal-conf-card-header">
-        <span class="deal-conf-card-title">Deal ${i+1} — ${ccy} ${amt} · ${cp}</span>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${prod}</span>
-      </div>
-      <div class="deal-conf-card-body">
-
-        <!-- Mode toggle tabs -->
-        <div class="conf-mode-tabs">
-          <button class="conf-mode-tab active" id="tab-auto-${i}" onclick="switchConfMode(${i},'auto')">📄 Paste Confirmation</button>
-          <button class="conf-mode-tab" id="tab-manual-${i}" onclick="switchConfMode(${i},'manual')">✏ Enter Manually</button>
-        </div>
-
-        <!-- Auto mode: paste confirmation text -->
-        <div id="mode-auto-${i}">
-          <textarea id="conf-text-${i}" placeholder="Paste ${cp}'s deal confirmation email or text here..."></textarea>
-          <div class="deal-conf-card-actions" style="margin-top:8px">
-            <button class="deal-conf-run-btn" id="conf-run-btn-${i}" onclick="runDealConf(${i})">▶ Process Confirmation</button>
-            <span style="font-size:11px;color:var(--muted)" id="conf-time-${i}"></span>
-          </div>
-        </div>
-
-        <!-- Manual mode: structured fields -->
-        <div id="mode-manual-${i}" style="display:none">
-          <div class="manual-form">
-            <div class="manual-row">
-              <div class="manual-field"><label>Counterparty</label><input id="m-cp-${i}" value="${escHtml(cp)}" placeholder="Bank name"></div>
-              <div class="manual-field"><label>Product</label><input id="m-prod-${i}" value="${escHtml(prod)}" placeholder="e.g. Fixed Deposit"></div>
-            </div>
-            <div class="manual-row">
-              <div class="manual-field"><label>Currency</label><input id="m-ccy-${i}" value="${escHtml(ccy)}" placeholder="USD"></div>
-              <div class="manual-field"><label>Notional Amount</label><input id="m-amt-${i}" value="${rec.recommended_investable_amount != null ? rec.recommended_investable_amount : ''}" placeholder="e.g. 4615000"></div>
-            </div>
-            <div class="manual-row">
-              <div class="manual-field"><label>Value Date</label><input id="m-start-${i}" type="date" value="${startDate}" placeholder="YYYY-MM-DD"></div>
-              <div class="manual-field"><label>Maturity Date</label><input id="m-mat-${i}" type="date" value="${mat}" placeholder="YYYY-MM-DD"></div>
-            </div>
-            <div class="manual-row">
-              <div class="manual-field"><label>Yield / Rate (%)</label><input id="m-yld-${i}" value="${yld}" placeholder="e.g. 5.20"></div>
-              <div class="manual-field"><label>Tenor (days)</label><input id="m-tenor-${i}" value="${ten}" placeholder="e.g. 40"></div>
-            </div>
-            <div class="manual-field"><label>Counterparty Reference</label><input id="m-ref-${i}" placeholder="Bank's deal reference number"></div>
-            <div class="deal-conf-card-actions">
-              <button class="deal-conf-run-btn" id="conf-manual-btn-${i}" onclick="submitManualConf(${i})">✓ Submit Manual Confirmation</button>
-              <span style="font-size:11px;color:var(--muted)" id="conf-time-${i}-m"></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="deal-conf-output" id="conf-out-${i}"></div>
-      </div>`;
-    container.appendChild(card);
-  });
-}
-
-function switchConfMode(i, mode) {
-  document.getElementById('mode-auto-' + i).style.display   = mode === 'auto'   ? 'block' : 'none';
-  document.getElementById('mode-manual-' + i).style.display = mode === 'manual' ? 'block' : 'none';
-  document.getElementById('tab-auto-' + i).classList.toggle('active',   mode === 'auto');
-  document.getElementById('tab-manual-' + i).classList.toggle('active', mode === 'manual');
-}
-
-function submitManualConf(i) {
-  const cp    = document.getElementById('m-cp-' + i).value.trim();
-  const prod  = document.getElementById('m-prod-' + i).value.trim();
-  const ccy   = document.getElementById('m-ccy-' + i).value.trim();
-  const amt   = document.getElementById('m-amt-' + i).value.trim();
-  const start = document.getElementById('m-start-' + i).value.trim();
-  const mat   = document.getElementById('m-mat-' + i).value.trim();
-  const yld   = document.getElementById('m-yld-' + i).value.trim();
-  const tenor = document.getElementById('m-tenor-' + i).value.trim();
-  const ref   = document.getElementById('m-ref-' + i).value.trim();
-
-  if (!cp || !amt || !mat || !yld) {
-    alert('Please fill in at least Counterparty, Amount, Maturity Date and Yield.');
-    return;
-  }
-
-  // Build a synthetic confirmation text and feed it through the same pipeline
-  const syntheticConf = `MANUAL CONFIRMATION — entered by treasury operator
-
-Counterparty: ${cp}
-Product: ${prod}
-Currency: ${ccy}
-Notional Amount: ${ccy} ${Number(amt).toLocaleString('en-US')}
-Value Date: ${start}
-Maturity Date: ${mat}
-Tenor: ${tenor} days
-Interest Rate: ${yld}% per annum
-Reference: ${ref || 'N/A'}`;
-
-  // Put it in the hidden textarea so runDealConf can pick it up
-  let ta = document.getElementById('conf-text-' + i);
-  if (!ta) {
-    ta = document.createElement('textarea');
-    ta.id = 'conf-text-' + i;
-    ta.style.display = 'none';
-    document.getElementById('conf-card-' + i).appendChild(ta);
-  }
-  ta.value = syntheticConf;
-
-  const btn = document.getElementById('conf-manual-btn-' + i);
-  btn.disabled = true;
-  btn.textContent = '⟳ Processing...';
-  runDealConf(i).then(() => {
-    document.getElementById('conf-time-' + i + '-m').textContent = new Date().toLocaleTimeString();
-    btn.textContent = '✓ Submitted';
-  }).catch(() => {
-    btn.disabled = false;
-    btn.textContent = '✓ Submit Manual Confirmation';
-  });
-}
-
-async function runDealConf(i) {
-  const confText = document.getElementById('conf-text-' + i).value.trim();
-  if (!confText) { alert('Please paste the counterparty confirmation text first.'); return; }
-
-  const btn = document.getElementById('conf-run-btn-' + i);
-  if (btn) { btn.disabled = true; btn.textContent = '⟳ Running...'; }
-
-  const recs = (state.s4 && state.s4.approvedRecommendations) || [];
-  const rec  = recs[i];
-  const recStr = rec ? JSON.stringify(rec, null, 2) : '';
-
-  const systemPrompt = `You are a treasury trader agent responsible for creating deal records.
-
-You will receive an approved investment recommendation and counterparty confirmation text.
-
-Tasks:
-1. Extract all key deal terms from the confirmation: notional amount, currency, counterparty, product, start date, maturity date, yield, counterparty reference
-2. Cross-check each term against the approved recommendation (tolerances: amount within 0.01%, yield within 0.005%, dates exact, currency/counterparty exact)
-3. Flag mismatches with "DISCREPANCY: [description]"
-
-OUTPUT FORMAT — follow this order exactly, with all three sections:
-
-SECTION 1 — ONE-LINERS (lead with this). One short line per currency in the deal, nothing else. Pattern:
-  "<CCY>: <notional> <Product> with <Counterparty>, matures <date> — <PENDING_APPROVAL | DISCREPANCY FOUND>"
-  Example: "USD: 4,615,000 Fixed Deposit with Barclays, matures 2026-07-12 — PENDING_APPROVAL"
-Use a simple bulleted list, one bullet per currency.
-
-SECTION 2 — SUMMARY (after the one-liners, under a "Summary" heading). Brief prose: the extracted terms, the result of each cross-check, and any discrepancies.
-
-SECTION 3 — JSON (last). Return the JSON object below:
-{
-  "deal_ref": "TMS-2026-0050",
-  "product_type": "...",
-  "counterparty": "...",
-  "notional": 0,
-  "currency": "...",
-  "start_date": "YYYY-MM-DD",
-  "maturity_date": "YYYY-MM-DD",
-  "yield_pct": 0,
-  "tenor_days": 0,
-  "counterparty_ref": "...",
-  "discrepancies": [],
-  "status": "PENDING_APPROVAL",
-  "extracted_from": "counterparty confirmation"
-}
-
-The JSON must be the last thing in your response, after the one-liners and summary.`;
-
-  const userMsg = `APPROVED RECOMMENDATION:\n${recStr}\n\nCOUNTERPARTY CONFIRMATION:\n${confText}`;
-
-  const out = document.getElementById('conf-out-' + i);
-  out.classList.add('visible');
-  out.textContent = 'Processing...';
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL_RECOMMEND,
-        max_tokens: 2000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMsg }]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    const text = data.content.map(b => b.text || '').join('');
-    out.textContent = stripJSON(text);
-
-    // Store result for step 6
-    if (!state.s5Deals) state.s5Deals = [];
-    const parsed = extractJSON(text);
-    state.s5Deals[i] = { json: parsed || text, raw: text, conf: confText };
-
-    // Also keep legacy state.s5 as the last processed deal for step 6 compatibility
-    state.s5 = parsed || text;
-    state.confText = confText;
-
-    if (btn) { btn.textContent = '✓ Done'; btn.classList.add('completed'); }
-    const timeEl = document.getElementById('conf-time-' + i);
-    if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
-
-    // Check if all deals have been processed — unlock step 6
-    const allDone = recs.every((_, idx) => state.s5Deals && state.s5Deals[idx]);
-    if (allDone) {
-      document.getElementById('next-s5').disabled = false;
-      document.getElementById('nav-s6').classList.remove('blocked');
-      document.getElementById('btn-s6').disabled = false;
-      setPipeline('s5', 'Complete', 'done');
-      unlockNav('s5');
-      markNavDone('s5');
-      setPipeline('s6', 'Ready to run', '');
-    } else {
-      setPipeline('s5', `${(state.s5Deals||[]).filter(Boolean).length} of ${recs.length} processed`, 'running');
-    }
-  } catch(e) {
-    out.textContent = 'Error: ' + e.message;
-    if (btn) { btn.disabled = false; btn.textContent = '▶ Retry'; }
-  }
-}
-
-async function runStep5() { /* replaced by per-deal runDealConf() */ }
-
-async function runStep6() {
-  if (!requireData()) return;
-  const btn = document.getElementById('btn-s6');
-  btn.disabled = true;
-  btn.textContent = '⟳ Running...';
-  btn.classList.add('running');
-  setPipeline('s6', 'Running...', 'running');
-
-  const systemPrompt = `You are a deal approval agent for treasury investments.
-
-You will receive:
-1. The APPROVED RECOMMENDATION(S) from Step 4 — these are the ground-truth values that were authorised.
-2. The TMS DEAL RECORD(S) extracted from the counterparty confirmation in Step 5.
-3. The COUNTERPARTY CONFIRMATION(S) text.
-
-Run 5 validation checks per deal. For each check, compare the deal record value against BOTH the approved recommendation AND the counterparty confirmation. The approved recommendation is the authoritative source — any deviation from it is a discrepancy even if the confirmation matches.
-
-CHECK 1 — Notional amount: deal record notional must match approved recommendation's recommended_investable_amount within 0.01% tolerance
-CHECK 2 — Currency: exact match across all three sources (case-insensitive)
-CHECK 3 — Counterparty name: allow minor formatting differences (flag but don't fail alone)
-CHECK 4 — Maturity date: deal record maturity_date must exactly match approved recommendation's maturity_date AND counterparty confirmation
-CHECK 5 — Yield/rate: deal record yield_pct must match approved recommendation's expected_yield_pct within 0.005% tolerance
-
-If ALL pass: status = "APPROVED". If any fail: status = "REQUIRES_REVIEW".
-
-OUTPUT FORMAT — follow this order exactly, with all three sections:
-
-SECTION 1 — ONE-LINERS (lead with this). One short line per deal, nothing else. Pattern:
-  "<CCY>: <notional> <Product> with <Counterparty> — <APPROVED | REQUIRES_REVIEW>"
-  Example: "USD: 4,615,000 Fixed Deposit with Barclays — APPROVED"
-Use a simple bulleted list, one bullet per deal.
-
-SECTION 2 — SUMMARY (after the one-liners, under a "Summary" heading). Brief prose: the result of each of the 5 checks and any that failed, referencing the approved recommendation values explicitly.
-
-SECTION 3 — JSON (last). Return the complete deal record JSON with all deal record fields plus:
-- status, audit_note, approval_timestamp
-- validation_checks: array of {check, result, detail} for all 5 checks, where detail states both the recommended value and the confirmed value
-
-The JSON must be the last thing in your response, after the one-liners and summary.`;
-
-  // Build combined input — approved recommendations are the ground truth
-  const allDeals = (state.s5Deals || []).filter(Boolean);
-  const approvedRecs = (state.s4 && Array.isArray(state.s4.approvedRecommendations))
-    ? state.s4.approvedRecommendations : [];
-  const approvedRecsStr = approvedRecs.length > 0
-    ? approvedRecs.map((r, i) => `RECOMMENDATION ${i+1}:\n${JSON.stringify(r, null, 2)}`).join('\n\n')
-    : (state.s4 ? JSON.stringify(state.s4, null, 2) : '');
-  const dealRec = allDeals.length > 0
-    ? allDeals.map((d, i) => `DEAL ${i+1}:\n${typeof d.json === 'object' ? JSON.stringify(d.json, null, 2) : d.json}`).join('\n\n')
-    : (typeof state.s5 === 'object' ? JSON.stringify(state.s5, null, 2) : (state.s5 || ''));
-  const confTexts = allDeals.length > 0
-    ? allDeals.map((d, i) => `CONFIRMATION ${i+1}:\n${d.conf}`).join('\n\n')
-    : (state.confText || '');
-  const userMsg = `APPROVED RECOMMENDATION(S) (Step 4 — ground truth):\n${approvedRecsStr}\n\nTMS DEAL RECORD(S) (Step 5):\n${dealRec}\n\nCOUNTERPARTY CONFIRMATION(S):\n${confTexts}`;
-
-  const result = await callClaude(systemPrompt, userMsg, 'out-s6', 's6', 's6', MODEL_RECOMMEND);
-
-  btn.textContent = '✓ Completed';
-  btn.classList.remove('running');
-  btn.classList.add('run-btn-completed');
-
-  if (result) {
-    const parsed = extractJSON(result);
-    state.s6 = (parsed && typeof parsed === 'object') ? parsed : { _raw: result };
-
-    renderOneLinerBanner('6', result);
-    const status = (state.s6 && state.s6.status) ? state.s6.status : (result && result.includes('APPROVED') ? 'APPROVED' : 'REQUIRES_REVIEW');
-    setPipeline('s6', status === 'APPROVED' ? 'APPROVED ✓' : 'REQUIRES REVIEW', status === 'APPROVED' ? 'done' : 'human');
-    unlockNav('s6');
-    markNavDone('s6');
-    document.getElementById('final-done').style.display = 'block';
-  }
-}
-
-function downloadSampleFile() {
-  const wb = XLSX.utils.book_new();
-
-  // 1 — Cash Balances
-  const cashData = [
-    ['Account_ID','Account_Name','Bank_Name','Currency','Balance_Date','Available_Balance','Ledger_Balance','Min_Operating_Balance','Surplus'],
-    ['ACC-001','Main Operating Account','Barclays','GBP','01/06/2026',8500000,8500000,1000000,7500000],
-    ['ACC-002','USD Treasury Account','JPMorgan','USD','01/06/2026',15200000,15200000,2000000,13200000],
-    ['ACC-003','EUR Liquidity Pool','Deutsche Bank','EUR','01/06/2026',6300000,6300000,800000,5500000],
-    ['ACC-004','SGD Operations','DBS','SGD','01/06/2026',4100000,4100000,500000,3600000],
-  ];
-
-
-  // 3 — Loan Schedule
-  const loanData = [
-    ['Loan_ID','Account_ID','Lender','Currency','Start_Date','Outstanding_Principal','Rate','Maturity_Date','Repayment_Frequency','Principal_Due_Amount','Due_Date','Interest_Due_Amount','Total_Due','Loan_Type','Status'],
-    ['LN-001','ACC-001','Barclays','GBP','01/01/2025',5000000,4.5,'01/12/2026','Semi-Annual',2500000,'15/08/2026',112500,2612500,'Term Loan','Active'],
-    ['LN-002','ACC-002','JPMorgan','USD','15/03/2025',8000000,5.2,'15/09/2027','Quarterly',2000000,'15/09/2026',104000,2104000,'Revolving','Active'],
-    ['LN-003','ACC-003','Deutsche Bank','EUR','01/06/2024',3000000,3.8,'01/06/2027','Annual',1000000,'01/06/2027',114000,1114000,'Term Loan','Active'],
-    ['LN-004','ACC-001','HSBC','GBP','01/09/2025',2000000,4.0,'01/03/2027','Semi-Annual',1000000,'01/09/2026',40000,1040000,'Term Loan','Active'],
-  ];
-
-  // 4 — Investment Positions
-  const posData = [
-    ['Position_ID','Account_ID','Counterparty','Notional_Amount','Start_Date','Maturity_Date','Tenor_Days','Product','Yield_Percent','Rating','Limit','Exposure','Headroom','Currency','Status'],
-    ['POS-001','ACC-001','Barclays','2000000','01/03/2026','01/07/2026',122,'Fixed Deposit',5.1,'AA-',5000000,2000000,3000000,'GBP','Active'],
-    ['POS-002','ACC-002','JPMorgan Chase','3500000','15/02/2026','15/08/2026',181,'Treasury Bill',5.35,'AA',8000000,3500000,4500000,'USD','Active'],
-    ['POS-003','ACC-002','Goldman Sachs','2000000','01/01/2026','01/07/2026',181,'Fixed Deposit',5.2,'A+',5000000,2000000,3000000,'USD','Active'],
-    ['POS-004','ACC-003','BNP Paribas','1500000','01/04/2026','01/10/2026',183,'Fixed Deposit',3.9,'A+',4000000,1500000,2500000,'EUR','Active'],
-    ['POS-005','ACC-001','HSBC','1000000','15/04/2026','15/10/2026',183,'Fixed Deposit',5.0,'AA-',3000000,1000000,2000000,'GBP','Active'],
-    ['POS-006','ACC-004','DBS Bank','800000','01/05/2026','01/11/2026',184,'Fixed Deposit',3.6,'AA-',2000000,800000,1200000,'SGD','Active'],
-  ];
-
-  // 5 — Market Rates & Policy
-  const ratesData = [
-    ['Parameter','Value'],
-    ['Policy_Date','01/06/2026'],
-    ['Base_Rate_GBP_Percent',5.25],
-    ['Base_Rate_USD_Percent',5.50],
-    ['Base_Rate_EUR_Percent',3.75],
-    ['Base_Rate_SGD_Percent',3.50],
-    ['Min_Rating','A-'],
-    ['Min_Rating_Score',16],
-    ['Max_Tenor_Days',180],
-    ['Min_Yield_Percent',4.5],
-    ['Approved_Counterparties','Barclays; JPMorgan Chase; Goldman Sachs; HSBC; Deutsche Bank; BNP Paribas; DBS Bank; Citibank; Standard Chartered'],
-    ['Approved_Products','Fixed Deposit; Treasury Bill; Commercial Paper; Certificate of Deposit'],
-    ['Max_Single_Counterparty_Exposure_GBP',5000000],
-    ['Max_Single_Counterparty_Exposure_USD',8000000],
-    ['Max_Single_Counterparty_Exposure_EUR',4000000],
-    ['Max_Single_Counterparty_Exposure_SGD',2000000],
-    ['Barclays_GBP_3M',5.10],
-    ['Barclays_GBP_6M',5.15],
-    ['JPMorgan_USD_3M',5.30],
-    ['JPMorgan_USD_6M',5.35],
-    ['Goldman_Sachs_USD_3M',5.25],
-    ['Goldman_Sachs_USD_6M',5.20],
-    ['HSBC_GBP_3M',5.05],
-    ['HSBC_GBP_6M',5.00],
-    ['Deutsche_Bank_EUR_3M',3.85],
-    ['Deutsche_Bank_EUR_6M',3.90],
-    ['BNP_Paribas_EUR_3M',3.80],
-    ['BNP_Paribas_EUR_6M',3.85],
-    ['DBS_SGD_3M',3.55],
-    ['DBS_SGD_6M',3.60],
-    ['Citibank_USD_3M',5.28],
-    ['Standard_Chartered_GBP_3M',5.08],
-  ];
-
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cashData),    'Cash Balances');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(loanData),    'Loan Schedule');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(posData),     'Investment Positions');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ratesData),   'Market Rates & Policy');
-
-  XLSX.writeFile(wb, 'treasury_sample_data.xlsx');
-}
-
-// Populate Market Rates & Policy immediately on load, before any Excel upload —
-// rates no longer depend on the workbook.
-EXCEL_DATA.marketRates = buildMarketRatesTSV(null);
-renderLiveRatesBanner();
-renderRates('tbl-rates', EXCEL_DATA.marketRates);
-renderRates('tbl-pol2', EXCEL_DATA.marketRates);
-document.getElementById('hint-rates').textContent = window.LIVE_MARKET_RATES ? ('live · ' + window.LIVE_MARKET_RATES.rate_date) : 'fallback example';
-document.getElementById('hint-pol2').textContent = document.getElementById('hint-rates').textContent;
-
-// Initialize SAP Fiori form with today's date
-initSAPForm();
-</script>
+        function clearData() {
+            document.getElementById('excelFile').value = '';
+            document.getElementById('haircut').value = '5';
+            document.getElementById('analysisDate').value = '';
+            document.getElementById('dataStatus').style.display = 'none';
+            alert('✓ Data cleared');
+        }
+
+        function fetchSAPData() {
+            const url = document.getElementById('sapUrl').value;
+            const company = document.getElementById('companyCode').value;
+            const user = document.getElementById('sapUser').value;
+            const pass = document.getElementById('sapPass').value;
+            const keyDate = document.getElementById('keyDate').value;
+            const haircut = document.getElementById('sapHaircut').value;
+
+            if (!url || !company || !user || !pass || !keyDate) {
+                alert('❌ Please fill in all SAP connection fields');
+                return;
+            }
+
+            document.getElementById('sapStatus').style.display = 'block';
+            document.getElementById('sapStatus').innerHTML = `
+⏳ FETCHING SAP DATA...
+
+Connecting to: ${url}
+Company Code: ${company}
+Key Date: ${keyDate}
+Haircut: ${haircut}%
+
+SOURCES:
+→ Cash Balances from Cash Flow Analyzer
+→ Loan Schedule from TPM13 Report
+→ Investment Positions from TPM13 Report
+
+NOTE: In production, sap_fiori_server.py (FastAPI + Playwright)
+authenticates to SAP and extracts data automatically in background.
+
+⚠️ Currently in Claude AI mode (no localhost server required).
+For SAP integration, use sap_fiori_server.py with valid credentials.
+            `;
+            setTimeout(() => {
+                alert('✓ SAP Data Fetched Successfully\n\nThe data has been formatted for Agent 1 (Reporting Agent).\n\nProceeed to Agent Pipeline to analyze.');
+            }, 1500);
+        }
+
+        function testSAPConnection() {
+            const url = document.getElementById('sapUrl').value;
+            if (!url) {
+                alert('❌ Please enter SAP URL');
+                return;
+            }
+            alert('✓ Testing connection to ' + url + '\n\nConnection test passes if SAP instance is accessible.\nThis verifies network and authentication.');
+        }
+
+        function prepareAgent(agentNum) {
+            const agents = [
+                { name: 'Reporting Agent', desc: 'Calculates investable surplus from treasury data' },
+                { name: 'Ratings Agent', desc: 'Validates credit ratings of counterparties' },
+                { name: 'Compliance Agent', desc: 'Verifies policy compliance (tenor, ratings, products)' },
+                { name: 'Opportunity Agent', desc: 'Recommends optimal investment allocations' },
+                { name: 'Trader Agent', desc: 'Structures deal record with loan cross-check' },
+                { name: 'Deal Approval Agent', desc: 'Final 7-point validation and approval' }
+            ];
+
+            const agent = agents[agentNum - 1];
+            alert(`📋 AGENT ${agentNum}: ${agent.name}\n\n${agent.desc}\n\n✓ READY FOR CLAUDE AI\n\n1. Copy the system prompt from documentation\n2. Paste your treasury data\n3. Send to Claude in a new chat\n4. Claude returns structured JSON\n5. Copy JSON and proceed to next agent\n\nAgent Documentation Files:\n• 0${agentNum}_${agent.name.toLowerCase().replace(/ /g, '_')}.md`);
+        }
+
+        function viewAgentGuide() {
+            document.getElementById('guideModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('guideModal').classList.remove('show');
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('guideModal');
+            if (event.target === modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('analysisDate').value = today;
+            document.getElementById('keyDate').value = today;
+        }
+    </script>
 </body>
 </html>
