@@ -195,11 +195,29 @@
         <div id="sap" class="tab-content active">
             <div class="section">
                 <div class="info-box">
-                    🔗 Connect to SAP Fiori to fetch live treasury data and automatically run all 6 agents
+                    🔗 Option 1: Connect to SAP Fiori OR Option 2: Paste Real Treasury Data (JSON)
                 </div>
 
+                <div style="color: #fbbf24; font-weight: bold; font-size: 14px; margin-bottom: 15px;">
+                    📋 Option 2: Paste Real Treasury Data (JSON)
+                </div>
+                <div class="form-group">
+                    <label>Treasury Data (JSON Format)</label>
+                    <textarea id="treasuryDataJson" placeholder='{"cash_balances": [...], "loan_schedule": [...], "investment_positions": [...]}' style="height: 120px;"></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button onclick="runAgentsWithTreasuryData()">🚀 Run Agents with This Data</button>
+                </div>
+
+                <div style="color: #a0a0a0; font-size: 11px; margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                    Paste your real treasury data in JSON format with: cash_balances, loan_schedule, investment_positions arrays
+                </div>
+
+                <div style="height: 1px; background: rgba(100,150,200,0.2); margin: 20px 0;"></div>
+
                 <div style="color: #00d9ff; font-weight: bold; font-size: 14px; margin-bottom: 15px;">
-                    SAP Connection Settings
+                    Or SAP Connection Settings
                 </div>
 
                 <div class="form-row">
@@ -582,6 +600,44 @@
 
         function calculateReturn(opp) {
             return (opp?.top_opportunities || []).reduce((sum, inv) => sum + ((inv.amount || 0) * (inv.yield || 0) / 100), 0);
+        }
+
+        async function runAgentsWithTreasuryData() {
+            const jsonInput = document.getElementById('treasuryDataJson').value.trim();
+
+            if (!jsonInput) {
+                alert('❌ Please paste treasury data in JSON format');
+                return;
+            }
+
+            try {
+                const treasuryData = JSON.parse(jsonInput);
+
+                clearStatus();
+                document.getElementById('sapStatus').style.display = 'block';
+                updateStatus('🔄 PROCESSING REAL TREASURY DATA');
+                updateStatus('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                updateStatus(`Cash Balances: ${(treasuryData.cash_balances || []).length} accounts`);
+                updateStatus(`Loan Schedule: ${(treasuryData.loan_schedule || []).length} loans`);
+                updateStatus(`Investment Positions: ${(treasuryData.investment_positions || []).length} positions\n`);
+
+                const data = {
+                    company_code: treasuryData.company_code || 'DE01',
+                    analysis_date: treasuryData.analysis_date || new Date().toISOString().split('T')[0],
+                    currency: treasuryData.currency || 'EUR',
+                    margin_haircut_pct: treasuryData.margin_haircut_pct || 5,
+                    cash_balances: treasuryData.cash_balances || [],
+                    loan_schedule: treasuryData.loan_schedule || [],
+                    investment_positions: treasuryData.investment_positions || []
+                };
+
+                updateStatus('🤖 Starting 6-Agent Analysis Pipeline with REAL DATA...\n');
+                await runAgentsSequentially(data);
+                switchTab('results');
+
+            } catch (e) {
+                alert('❌ Invalid JSON format: ' + e.message);
+            }
         }
 
         window.onload = function() {
